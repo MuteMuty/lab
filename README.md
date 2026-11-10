@@ -8,7 +8,7 @@ Small, original things to click, play and poke at, built with AI at the speed of
 
 | Project | What it is | Live |
 |---|---|---|
-| Afterstep | A daily puzzle where your past self holds the doors | _in progress_ |
+| [Afterstep](https://github.com/MuteMuty/afterstep) | A daily puzzle where your past self holds the doors. Rust + WebAssembly. | [play](https://afterstep.brightloopapps.com) |
 
 ## The queue
 
