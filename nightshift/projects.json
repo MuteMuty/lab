@@ -14,6 +14,7 @@
     "public": true,
     "d1": [
       "lab-hub"
-    ]
+    ],
+    "subdomain": "lab"
   }
 ]

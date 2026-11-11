@@ -25,7 +25,7 @@ function fakeRunner({ buildFails = false } = {}) {
 }
 const env = { CLOUDFLARE_API_TOKEN: "t", CLOUDFLARE_ACCOUNT_ID: "a" };
 const contract = { url: "https://x", commands: { build: "npm run build", deploy: "npx wrangler deploy" }, smoke: ["/"] };
-const base = { contract, dir: "/lab/afterstep", env, sleep: async () => {} };
+const base = { contract, dir: "/lab/afterstep", env, routes: [], worker: "afterstep", stateFile: "/tmp/claude-501/ns-test-state.json", sleep: async () => {} };
 
 test("happy path deploys and parses the version", async () => {
   const { runner, calls } = fakeRunner();
@@ -80,4 +80,62 @@ test("no rollback when the site was already down before the deploy", async () =>
   assert.equal(r.rolledBack, false);
   assert.equal(r.wasHealthy, false);
   assert.ok(!calls.some((c) => c.includes("wrangler rollback")));
+});
+
+import { restore } from "../bin/deploy.mjs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+const stateFile = () => join(mkdtempSync(join(tmpdir(), "ns-state-")), "state.json");
+
+test("refuses a route outside the project's own subdomain", async () => {
+  const { runner, calls } = fakeRunner();
+  const r = await deploy("afterstep", { ...base, runner, worker: "afterstep", routes: [{ pattern: "brightloopapps.com/afterstep/*" }], smokeFn: async () => ({ ok: true }) });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /route/);
+  assert.ok(!calls.some((c) => /wrangler deploy($|\s)/.test(c)));
+});
+
+test("the project's own subdomain as a custom domain is fine", async () => {
+  const { runner } = fakeRunner();
+  const r = await deploy("afterstep", { ...base, runner, worker: "afterstep", routes: [{ pattern: "afterstep.brightloopapps.com", custom_domain: true }], stateFile: stateFile(), smokeFn: async () => ({ ok: true }) });
+  assert.equal(r.ok, true);
+});
+
+test("a good deploy records the last good version", async () => {
+  const { runner } = fakeRunner();
+  const sf = stateFile();
+  await deploy("afterstep", { ...base, runner, stateFile: sf, smokeFn: async () => ({ ok: true }) });
+  assert.equal(JSON.parse(readFileSync(sf, "utf8")).afterstep.versionId, NEXT);
+});
+
+test("restore rolls back to the last good version when the site is broken", async () => {
+  const { runner, calls } = fakeRunner();
+  const sf = stateFile();
+  writeFileSync(sf, JSON.stringify({ afterstep: { versionId: PREV, at: "2026-11-11T01:00:00Z" } }));
+  let n = 0;
+  const r = await restore("afterstep", { ...base, runner, stateFile: sf, smokeFn: async () => ({ ok: ++n > 1 }) });
+  assert.equal(r.ok, true);
+  assert.equal(r.action, "rolled back");
+  assert.ok(calls.some((c) => c.includes(`wrangler rollback ${PREV}`)));
+});
+
+test("restore does nothing when the site is healthy", async () => {
+  const { runner, calls } = fakeRunner();
+  const r = await restore("afterstep", { ...base, runner, stateFile: stateFile(), smokeFn: async () => ({ ok: true }) });
+  assert.equal(r.action, "none");
+  assert.equal(calls.length, 0);
+});
+
+test("restore without a known good version asks for Erik", async () => {
+  const { runner } = fakeRunner();
+  const r = await restore("afterstep", { ...base, runner, stateFile: stateFile(), smokeFn: async () => ({ ok: false }) });
+  assert.equal(r.ok, false);
+  assert.equal(r.needsErik, true);
+});
+
+test("a project may declare a subdomain different from its worker name", async () => {
+  const { runner } = fakeRunner();
+  const r = await deploy("hub", { ...base, runner, worker: "lab-hub", subdomain: "lab", routes: [{ pattern: "lab.brightloopapps.com" }], smokeFn: async () => ({ ok: true }) });
+  assert.equal(r.ok, true);
 });

@@ -20,6 +20,41 @@ const bash = (command, cwd = `${LAB}/afterstep`) => check({ tool_name: "Bash", t
 const write = (file_path, tool_name = "Write") => check({ tool_name, tool_input: { file_path }, cwd: LAB }, opts);
 
 const blocked = [
+  // --- final review: control flow, wrappers, shell flags, git globals (C1)
+  ["if/then rm", () => bash("if true; then rm -rf ~/Documents; fi")],
+  ["for loop rm", () => bash("for d in ~/Documents ~/Desktop; do rm -rf \"$d\"; done")],
+  ["brace group rm", () => bash("{ rm -rf ~/Documents; }")],
+  ["negated rm", () => bash("! rm -rf ~/Documents")],
+  ["while loop rm", () => bash("while false; do rm -rf ~/Documents; done")],
+  ["bash -lc", () => bash('bash -lc "rm -rf ~/Documents"')],
+  ["sh -xc", () => bash('sh -xc "rm -rf ~"')],
+  ["timeout wrapper", () => bash("timeout 60 rm -rf ~/Documents")],
+  ["caffeinate wrapper", () => bash("caffeinate -i rm -rf ~/Documents")],
+  ["env -u wrapper", () => bash("env -u FOO rm -rf ~/Documents")],
+  ["git -c force push", () => bash("git -c user.name=x push --force origin main")],
+  // --- here-docs (I1)
+  ["heredoc into zshrc", () => bash("cat > ~/.zshrc <<EOF\nit's fine\nEOF")],
+  ["heredoc into SAFETY.md", () => bash("cat > ~/brightloop-lab/lab/nightshift/SAFETY.md <<'EOF'\n# Don't edit\nEOF")],
+  ["comment with apostrophe then cp out", () => bash("# don't forget\ncp x ~/Desktop/x")],
+  // --- settings copy into a directory (I3)
+  ["cp settings into dir via relative path from elsewhere", () => bash("cp ~/notes/settings.json ~/brightloop-lab/newproj/.claude/settings.json")],
+  // --- direct wrangler with Erik's login (I4)
+  ["direct wrangler deploy", () => bash("npx wrangler deploy")],
+  ["direct wrangler rollback", () => bash("npx wrangler rollback abc --message x -y")],
+  ["direct remote d1", () => bash('npx wrangler d1 execute lab-hub --remote --command "select 1"')],
+  ["wrangler secret", () => bash("npx wrangler secret put X")],
+  // --- gh outside lab repos (I5)
+  ["gh issue on someone else's repo", () => bash("gh issue create -R torvalds/linux -t x -b y")],
+  ["gh lowercase owner foreign repo", () => bash("gh issue list -R mutemuty/resume")],
+  ["gh api -XDELETE", () => bash("gh api -XDELETE repos/MuteMuty/afterstep/git/refs/heads/x")],
+  // --- re-graded minors
+  ["read secrets via cat", () => bash("cat ~/brightloop-lab/.secrets/cloudflare.env")],
+  ["read secrets via Read tool", () => check({ tool_name: "Read", tool_input: { file_path: `${LAB}/.secrets/cloudflare.env` }, cwd: LAB }, opts)],
+  ["delete the lab root", () => bash("rm -rf ~/brightloop-lab")],
+  ["delete a repo root", () => bash("rm -rf ~/brightloop-lab/afterstep")],
+  ["delete a .git dir", () => bash("rm -rf ~/brightloop-lab/afterstep/.git")],
+  ["killall", () => bash("killall node")],
+  ["pkill node broadly", () => bash("pkill node")],
   ["rm -rf ~/Documents", () => bash("rm -rf ~/Documents")],
   ["cd / && rm -rf x", () => bash("cd / && rm -rf x")],
   ["rm via .. escape", () => bash("rm -rf ~/brightloop-lab/../Documents")],
@@ -54,6 +89,18 @@ const blocked = [
   ["wrangler login", () => bash("npx wrangler logout")],
 ];
 const allowed = [
+  // --- final review: things routine work needs
+  ["if/then rm inside lab", () => bash("if [ -d web/dist ]; then rm -rf web/dist; fi")],
+  ["heredoc commit message", () => bash("git commit -m \"$(cat <<'EOF'\nfix: don't push stale levels; find them first\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nEOF\n)\"")],
+  ["heredoc file inside lab", () => bash("cat > web/notes.md <<'EOF'\nIt's fine to write here\nEOF")],
+  ["copy canonical settings into new project", () => bash("mkdir -p ~/brightloop-lab/newproj/.claude && cp ~/brightloop-lab/afterstep/.claude/settings.json ~/brightloop-lab/newproj/.claude/settings.json")],
+  ["wrangler dev", () => bash("npx wrangler dev --port 8788")],
+  ["local d1", () => bash("npx wrangler d1 migrations apply lab-hub --local")],
+  ["pkill a dev server", () => bash('pkill -f "vite preview web --port 4393"')],
+  ["kill by pid", () => bash("kill 12345")],
+  ["helper deploy", () => bash("node ~/brightloop-lab/lab/nightshift/bin/deploy.mjs afterstep")],
+  ["timeout wrapper inside lab", () => bash("timeout 120 npm run build")],
+  ["git -c commit", () => bash("git -c user.name=night commit -m x")],
   ["rm dist", () => bash("rm -rf ~/brightloop-lab/afterstep/web/dist")],
   ["rm relative in lab", () => bash("rm -rf web/dist && npm run build")],
   ["rm tmp", () => bash("rm -rf $TMPDIR/x")],
@@ -62,10 +109,7 @@ const allowed = [
   ["plain push", () => bash("git push")],
   ["merge pr", () => bash("gh pr merge 3 -R MuteMuty/afterstep --squash")],
   ["make public", () => bash("gh repo edit MuteMuty/afterstep --visibility public --accept-visibility-change-consequences")],
-  ["deploy afterstep", () => bash("npx wrangler deploy")],
-  ["deploy from worktree", () => bash("npx wrangler@4.160.0 deploy", "/wt/afterstep")],
   ["rm in worktree", () => bash("rm -rf node_modules", "/wt/afterstep")],
-  ["d1 lab-hub", () => bash('npx wrangler d1 execute lab-hub --remote --command "select 1"')],
   ["write readme", () => write(`${LAB}/afterstep/README.md`)],
   ["write tmp", () => write("/private/tmp/x/notes.md")],
   ["cargo test", () => bash("PATH=$HOME/.cargo/bin:$PATH cargo test --release")],
@@ -78,7 +122,6 @@ const allowed = [
   ["sed -i with empty suffix (macOS)", () => bash("sed -i '' 's/0.85rem/0.9rem/' web/src/style.css")],
   ["sed -i script with anchors and parens", () => bash("sed -i '' 's/^  board.focus({ preventScroll: true });$/  \\/\\/ NEG/' web/src/main.ts")],
   ["sed -i -e expression", () => bash("sed -i.bak -e 's/a/b/' -e 's/c/d/' web/src/style.css")],
-  ["wrangler rollback", () => bash("npx wrangler rollback abc --message 'auto' -y")],
 ];
 
 for (const [name, fn] of blocked) test(`blocks: ${name}`, () => assert.equal(fn().allow, false, JSON.stringify(fn())));

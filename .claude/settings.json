@@ -2,7 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit",
+        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit|Read|Grep|Glob",
         "hooks": [{ "type": "command", "command": "node /Users/erikpahor/brightloop-lab/lab/nightshift/bin/guard.mjs" }]
       }
     ]

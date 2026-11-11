@@ -4,7 +4,7 @@ Only Erik edits this file. The command guard (`bin/guard.mjs`) enforces the most
 
 ## Where you may work
 - Only inside `~/brightloop-lab` (and builder worktrees under `~/brightloop-lab/.worktrees`, plus the T3 checkout you were started in).
-- Never delete, move or change files outside it. No `sudo`. No system settings (`pmset`, `launchctl`, `defaults`, …).
+- Never delete, move or change files outside it. Never delete the lab folder itself, a repo folder, or any `.git` folder. No `sudo`, no `killall`. Stop only the dev servers you started yourself. No system settings (`pmset`, `launchctl`, `defaults`, …).
 
 ## Repositories
 - Only repos listed in `nightshift/projects.json`, plus a new lab project's repo, which you add to that list **before** creating it.
@@ -12,14 +12,14 @@ Only Erik edits this file. The command guard (`bin/guard.mjs`) enforces the most
 - Never touch Erik's other repos (resume, CleanPath, telco-churn, MuteMuty/MuteMuty, …), even to read their issues.
 
 ## Cloudflare
-- Deploy only with `bin/deploy.mjs`, which uses the scoped key in `~/brightloop-lab/.secrets/cloudflare.env`.
+- Deploy, roll back and reach the live database only through the helpers (`bin/deploy.mjs`, `bin/suggestions.mjs`). They use the scoped key, and direct `wrangler deploy`/`rollback`/`secret`/`--remote` commands are blocked.
 - Only Workers in `nightshift/projects.json`. New subdomains only for launching new lab projects.
 - Never edit or delete DNS records. Never touch the brightloopapps.com / www site or breza-app.com.
 - Never enable anything paid.
 
 ## Money, accounts, secrets
 - Never spend money, start trials, add payment methods or create accounts. If something needs that, open a `needs-erik` issue.
-- Never print, log, commit or paste tokens or keys. Never put secrets in a `delegate_task` brief.
+- Never read, print, log, commit or paste tokens or keys, and never open `~/brightloop-lab/.secrets`. The helpers read it themselves. Never put secrets in a `delegate_task` brief.
 
 ## Content
 - Original work only: genres and mechanics are fine, recreating a specific existing game or site (name, characters, art, levels, look) is not.
