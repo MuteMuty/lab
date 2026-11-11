@@ -78,7 +78,7 @@ export async function deploy(projectName, opts = {}) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  const r = await deploy(process.argv[2], { dryRun: process.argv.includes("--dry-run") });
+  const r = await deploy(process.argv[2], { dryRun: process.argv.includes("--dry-run") || process.env.DRY_RUN === "1" });
   console.log(JSON.stringify(r, null, 2));
   process.exitCode = r.ok ? 0 : 1;
 }
