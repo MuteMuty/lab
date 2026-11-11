@@ -37,3 +37,13 @@ test("no logs means nothing unfinished", () => {
   assert.equal(findUnfinished(dir()), null);
   assert.equal(findUnfinished(join(dir(), "missing")), null);
 });
+
+test("a second run on the same day gets its own heading and is running again", () => {
+  const d = dir();
+  const path = startLog("2026-11-11", { dial: "normal", mode: "dry-run" }, d);
+  finishLog("2026-11-11", "done", d);
+  startLog("2026-11-11", { dial: "low", mode: "full" }, d);
+  const text = readFileSync(path, "utf8");
+  assert.match(text, /^status: running$/m);
+  assert.match(text, /^## Run \d\d:\d\d · mode full · dial low$/m);
+});

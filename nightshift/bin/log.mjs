@@ -15,8 +15,14 @@ const file = (date, dir) => join(dir, `${date}.md`);
 export function startLog(date, { dial, mode }, dir = LOGS) {
   mkdirSync(dir, { recursive: true });
   const path = file(date, dir);
+  const now = new Date();
+  const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const heading = `## Run ${hhmm} · mode ${mode} · dial ${dial}\n\n`;
   if (!existsSync(path)) {
-    writeFileSync(path, `---\nstatus: running\ndial: ${dial}\nmode: ${mode}\n---\n\n# Night shift ${date}\n\n## Steps\n\n`);
+    writeFileSync(path, `---\nstatus: running\ndial: ${dial}\nmode: ${mode}\n---\n\n# Night shift ${date}\n\n${heading}`);
+  } else {
+    const text = readFileSync(path, "utf8").replace(/^status: .*$/m, "status: running");
+    writeFileSync(path, `${text.replace(/\n*$/, "\n")}\n${heading}`);
   }
   return path;
 }

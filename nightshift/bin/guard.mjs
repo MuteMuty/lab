@@ -272,7 +272,18 @@ function checkSegment(seg, state, ctx) {
     }
     case "sed": case "perl": {
       if (!args.some((a) => /^-i/.test(a) || /^-[a-zA-Z]*i/.test(a))) return null;
-      return pathsAllowed(nonFlags(args).slice(1), `${cmd} -i`);
+      // sed [-i [suffix]] [-e script]... [script] file...
+      const files = [];
+      let scriptGiven = false;
+      for (let i = 0; i < args.length; i++) {
+        const a = args[i];
+        if (a === "-i" && (args[i + 1] === "" || /^\.\w*$/.test(args[i + 1] ?? ""))) { i++; continue; }
+        if (a === "-e" || a === "-f" || a === "--expression" || a === "--file") { scriptGiven = true; i++; continue; }
+        if (isFlag(a)) continue;
+        if (!scriptGiven) { scriptGiven = true; continue; }
+        files.push(a);
+      }
+      return pathsAllowed(files, `${cmd} -i`);
     }
     case "dd": {
       const of = args.find((a) => a.startsWith("of="));

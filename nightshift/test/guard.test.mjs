@@ -49,6 +49,7 @@ const blocked = [
   ["unknown var path", () => bash("rm -rf $SOMEWHERE/x")],
   ["$LAB escape", () => bash("rm -rf $LAB/../Documents")],
   ["foreign repo with full stop", () => bash('echo "see MuteMuty/resume."')],
+  ["sed -i outside the lab", () => bash("sed -i '' 's/a/b/' ~/.zshrc")],
   ["d1 other database", () => bash("npx wrangler d1 execute prod-db --remote --command 'drop table x'")],
   ["wrangler login", () => bash("npx wrangler logout")],
 ];
@@ -74,6 +75,9 @@ const allowed = [
   ["git -C $LAB worktree remove", () => bash("git -C $LAB/afterstep worktree remove $LAB/.worktrees/night-x --force", "/wt/afterstep")],
   ["${LAB} braces", () => bash("rm -rf ${LAB}/.worktrees/playtest-x")],
   ["lab repo before a full stop", () => bash('node log.mjs note 2026-11-11 "pushed to MuteMuty/lab."')],
+  ["sed -i with empty suffix (macOS)", () => bash("sed -i '' 's/0.85rem/0.9rem/' web/src/style.css")],
+  ["sed -i script with anchors and parens", () => bash("sed -i '' 's/^  board.focus({ preventScroll: true });$/  \\/\\/ NEG/' web/src/main.ts")],
+  ["sed -i -e expression", () => bash("sed -i.bak -e 's/a/b/' -e 's/c/d/' web/src/style.css")],
   ["wrangler rollback", () => bash("npx wrangler rollback abc --message 'auto' -y")],
 ];
 
