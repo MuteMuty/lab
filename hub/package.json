@@ -1,0 +1,14 @@
+{
+  "name": "lab-hub",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-data.mjs",
+    "test": "node --test test/",
+    "playtest": "node tests/playtest.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.52.0",
+    "wrangler": "4.160.0"
+  }
+}

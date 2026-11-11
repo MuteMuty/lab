@@ -2,7 +2,7 @@
 
 Small, original things to click, play and poke at, built with AI at the speed of thought.
 
-**Live:** [lab.brightloopapps.com](https://lab.brightloopapps.com) (coming soon)
+**Live:** [lab.brightloopapps.com](https://lab.brightloopapps.com)
 
 ## Projects
 

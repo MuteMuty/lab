@@ -40,10 +40,11 @@ test("happy path deploys and parses the version", async () => {
 test("failing smoke test rolls back to the previous version", async () => {
   const { runner, calls } = fakeRunner();
   let smokes = 0;
-  const r = await deploy("afterstep", { ...base, runner, smokeFn: async () => { smokes++; return { ok: false, results: [{ path: "/", status: 500 }] }; } });
+  // healthy before the deploy, broken after it
+  const r = await deploy("afterstep", { ...base, runner, smokeFn: async () => { smokes++; return smokes === 1 ? { ok: true, results: [] } : { ok: false, results: [{ path: "/", status: 500 }] }; } });
   assert.equal(r.ok, false);
   assert.equal(r.rolledBack, true);
-  assert.equal(smokes, 6);
+  assert.equal(smokes, 7);
   assert.ok(calls.some((c) => c.includes(`wrangler rollback ${PREV}`)));
 });
 
@@ -70,4 +71,13 @@ test("missing scoped token refuses to deploy", async () => {
   assert.equal(r.ok, false);
   assert.match(r.error, /token/);
   assert.equal(calls.length, 0);
+});
+
+test("no rollback when the site was already down before the deploy", async () => {
+  const { runner, calls } = fakeRunner();
+  const r = await deploy("afterstep", { ...base, runner, smokeFn: async () => ({ ok: false, results: [{ path: "/", status: 0 }] }) });
+  assert.equal(r.ok, false);
+  assert.equal(r.rolledBack, false);
+  assert.equal(r.wasHealthy, false);
+  assert.ok(!calls.some((c) => c.includes("wrangler rollback")));
 });

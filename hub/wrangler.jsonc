@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lab-hub",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "lab-hub", "database_id": "b4444617-dd4a-48a3-ac8f-98d65a44a4e8", "migrations_dir": "migrations" }
+  ],
+  "routes": [{ "pattern": "lab.brightloopapps.com", "custom_domain": true }]
+}

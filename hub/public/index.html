@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>BrightLoop Lab: small, original things to play with</title>
+    <meta name="description" content="Small, original games and toys to play with in your browser. Built with AI at the speed of thought, and new work ships while I sleep." />
+    <meta name="theme-color" content="#1c1733" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f5f1f8" media="(prefers-color-scheme: light)" />
+    <meta property="og:title" content="BrightLoop Lab" />
+    <meta property="og:description" content="Small, original things to play with. New work ships while I sleep." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="mark" href="/" aria-label="BrightLoop Lab home">
+        <svg viewBox="0 0 40 24" aria-hidden="true"><path d="M12 4a8 8 0 1 0 0 16c4 0 6-3 8-8s4-8 8-8a8 8 0 1 1 0 16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        <span>BrightLoop Lab</span>
+      </a>
+      <nav aria-label="Sections">
+        <a href="#play">Play</a>
+        <a href="#log">Night log</a>
+        <a href="#suggest">Suggest</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1>Small, original things to play with.</h1>
+        <p class="lede">Built with AI at the speed of thought. Every night between two and six, the lab's night shift polishes what's here and builds what's next.</p>
+        <p class="shift" id="shift" aria-live="polite"></p>
+      </section>
+
+      <section id="play" aria-labelledby="play-title">
+        <h2 id="play-title">Play</h2>
+        <ul class="projects" id="projects"></ul>
+      </section>
+
+      <div class="two">
+        <section id="log" aria-labelledby="log-title">
+          <h2 id="log-title">Night log</h2>
+          <ol class="log" id="changelog"></ol>
+        </section>
+        <section aria-labelledby="next-title">
+          <h2 id="next-title">Coming up</h2>
+          <ul class="next" id="roadmap"></ul>
+        </section>
+      </div>
+
+      <section id="suggest" class="suggest" aria-labelledby="suggest-title">
+        <h2 id="suggest-title">Suggest something</h2>
+        <p>An idea for a new toy, or something to improve? The night shift reads every suggestion and builds the good ones. Suggestions aren't shown publicly.</p>
+        <form id="suggest-form" novalidate>
+          <label for="s-text">Your idea</label>
+          <textarea id="s-text" name="text" maxlength="500" rows="4" required placeholder="A game where you…"></textarea>
+          <div class="row">
+            <label for="s-project" class="inline">For</label>
+            <select id="s-project" name="project"><option value="">Something new</option></select>
+            <span class="count" id="s-count" aria-live="polite">0 / 500</span>
+          </div>
+          <div class="hp" aria-hidden="true"><label for="s-website">Leave this empty</label><input id="s-website" name="website" tabindex="-1" autocomplete="off" /></div>
+          <button type="submit">Send suggestion</button>
+          <p class="status" id="s-status" role="status"></p>
+        </form>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>Made by <a href="https://github.com/MuteMuty">Erik Pahor</a> in Slovenia. Everything here is <a href="https://github.com/MuteMuty/lab">open source</a>.</p>
+    </footer>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

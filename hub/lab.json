@@ -1,0 +1,14 @@
+{
+  "name": "hub",
+  "url": "https://lab.brightloopapps.com",
+  "worker": "lab-hub",
+  "commands": {
+    "install": "npm ci",
+    "test": "node --test test/",
+    "build": "node scripts/build-data.mjs",
+    "serve": "npx wrangler d1 migrations apply lab-hub --local && npx wrangler dev --port {port}",
+    "playtest": "node tests/playtest.mjs",
+    "deploy": "npx wrangler deploy"
+  },
+  "smoke": ["/", "/data/projects.json"]
+}

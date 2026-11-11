@@ -41,7 +41,7 @@ export async function deploy(projectName, opts = {}) {
   const runner = opts.runner ?? run;
   const smokeFn = opts.smokeFn ?? ((name) => smoke(name));
   const sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
-  const result = { project: projectName, ok: false, versionId: null, previousVersionId: null, smoke: null, rolledBack: false };
+  const result = { project: projectName, ok: false, wasHealthy: null, versionId: null, previousVersionId: null, smoke: null, rolledBack: false };
 
   if (!contract) return { ...result, error: "project has no lab.json" };
   if (!env.CLOUDFLARE_API_TOKEN || !env.CLOUDFLARE_ACCOUNT_ID) {
@@ -49,6 +49,8 @@ export async function deploy(projectName, opts = {}) {
   }
   const sh = (command) => runner("sh", ["-c", command], { cwd: dir, env });
 
+  // Only a version that was serving fine is worth rolling back to.
+  result.wasHealthy = !!(await smokeFn(projectName))?.ok;
   const prev = runner("npx", ["wrangler", "deployments", "list", "--json"], { cwd: dir, env });
   result.previousVersionId = prev.code === 0 ? latestVersion(prev.stdout) : null;
 
@@ -67,7 +69,7 @@ export async function deploy(projectName, opts = {}) {
     if (result.smoke.ok) return { ...result, ok: true };
     if (i < SMOKE_TRIES - 1) await sleep(SMOKE_WAIT_MS);
   }
-  if (result.previousVersionId) {
+  if (result.previousVersionId && result.wasHealthy) {
     const rb = runner("npx", ["wrangler", "rollback", result.previousVersionId, "--message", "night shift auto-rollback", "-y"], { cwd: dir, env });
     result.rolledBack = rb.code === 0;
     if (rb.code !== 0) result.rollbackError = rb.stderr.slice(-1000);
