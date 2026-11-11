@@ -92,9 +92,9 @@ Why this shape (instead of a parallel crew like firstmate): on a Pro plan, paral
 5. **Self-directed polish:** the director's own improvements for an existing project, drawn from playtester notes (feel, performance, accessibility, onboarding, shareability).
 
 **New projects.**
-- **Cadence:** start at most one new project per week, and only when every live project passes its smoke test.
-- **Launch:** a new project takes several nights. Night 1 scaffolds the repo, contract, a playable core and a deployed preview. Later nights build up the MVP. It's added to the hub only when it passes a full playtest and the director judges it "something Erik would be proud to link".
-- **Naming:** names and subdomains are new, original words. Each project gets its own public repo `MuteMuty/<name>` with a README in the style of Afterstep's.
+- **Cadence:** start at most one new project per week, and only when every live project passes its smoke test. The director decides the concept and name alone (Erik approved this).
+- **Private until launch:** a new project takes several nights. Night 1 creates a **private** repo `MuteMuty/<name>`, the contract, a playable core and a preview on the Worker's hidden `*.workers.dev` address. Later nights build up the MVP. **Launch** happens only when it passes a full playtest and the director judges it "something Erik would be proud to link". Launch means: make the repo public, attach `<name>.brightloopapps.com`, and add it to the hub. Nothing half-finished is publicly visible.
+- **Naming:** names and subdomains are new, original words, and each README follows the style of Afterstep's.
 
 **Originality.** Projects and games must be original concepts: never a recreation of a specific existing game or site (its name, characters, art, levels or look). Genres and mechanics are fine.
 
