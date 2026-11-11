@@ -18,6 +18,12 @@ Every night from 02:00 to 06:00, an autonomous loop on Erik's Mac keeps the lab'
 | Pause the schedule | ask Claude in T3 to pause the "Night shift" scheduled task |
 | See what was blocked | `cat ~/brightloop-lab/nightshift-blocked.jsonl` |
 
+## Schedule
+- **The task:** T3 scheduled task **"Night shift"** (`scheduled-task:c916a50d-b03d-4f86-88c5-653b5f55c052`) in the T3 project **BrightLoop Lab**, daily at 02:00 local time. Each run opens a new thread with the morning report.
+- **The T3 project:** it is rooted at `~/brightloop-lab/lab`, because scheduled runs need a git checkout. The director works on `~/brightloop-lab/...` by full paths.
+- **Keeping the Mac awake:** `pmset repeat wakeorpoweron 01:55` plus the LaunchAgent in [`launchd/`](launchd/) (caffeinate 01:56 → ~06:16). The lid must stay open and the Mac on power.
+- **History:** first rehearsal and first supervised real run on 2026-11-11 (see `logs/2026-11-11.md`).
+
 ## Safety
 [`SAFETY.md`](SAFETY.md) holds the rules. `bin/guard.mjs` enforces them as a Claude Code hook on every command. A scoped Cloudflare key means other domains can't be reached at all.
 
