@@ -12,19 +12,19 @@ import { smoke } from "./smoke.mjs";
 const minutes = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
 
 /** Pure decision. */
-export function decide({ now, dialRaw, stopExists, dryRun, recover }) {
+export function decide({ now, dialRaw, stopExists, dryRun, recover, force }) {
   const cfg = loadConfig() ?? { windowStart: "01:30", windowEnd: "05:30" };
   const dial = resolveDial(dialRaw, now);
   const date = localDate(now);
   const out = (go, mode, reason) => ({ go, mode, reason, dial, recover: recover ?? null, date });
   if (stopExists) return out(false, "stop", "STOP file present");
   if (dryRun) return out(true, "dry-run", "rehearsal");
+  if (dial.tasks === 0) return out(true, "maintenance", "dial is off");
   const t = now.getHours() * 60 + now.getMinutes();
-  if (t < minutes(cfg.windowStart) || t > minutes(cfg.windowEnd)) {
+  if (!force && (t < minutes(cfg.windowStart) || t > minutes(cfg.windowEnd))) {
     return out(true, "maintenance", `started at ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}, outside ${cfg.windowStart}–${cfg.windowEnd}`);
   }
-  if (dial.tasks === 0) return out(true, "maintenance", "dial is off");
-  return out(true, "full", "normal night");
+  return out(true, "full", force ? "supervised run (NIGHTSHIFT_FORCE=1)" : "normal night");
 }
 
 async function main() {
@@ -34,6 +34,7 @@ async function main() {
     dialRaw: readJson(DIAL_FILE, undefined),
     stopExists: existsSync(join(LAB, "STOP")),
     dryRun: process.env.DRY_RUN === "1",
+    force: process.env.NIGHTSHIFT_FORCE === "1",
     recover: findUnfinished(),
   });
   if (result.go) {

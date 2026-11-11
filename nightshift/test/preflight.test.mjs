@@ -42,3 +42,13 @@ test("recover info is passed through", () => {
   const recover = { date: "2026-11-11", openSteps: [{ id: "deploy", detail: "afterstep" }] };
   assert.deepEqual(decide({ ...base, now: at(2), recover }).recover, recover);
 });
+
+test("force runs a full night outside the window (supervised runs)", () => {
+  const r = decide({ ...base, now: at(15, 40), force: true });
+  assert.equal(r.mode, "full");
+});
+
+test("force never overrides STOP or dial off", () => {
+  assert.equal(decide({ ...base, now: at(15), force: true, stopExists: true }).mode, "stop");
+  assert.equal(decide({ ...base, now: at(15), force: true, dialRaw: { level: "off" } }).mode, "maintenance");
+});
