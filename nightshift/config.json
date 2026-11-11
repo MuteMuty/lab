@@ -1,0 +1,22 @@
+{
+  "start": "02:00",
+  "windowStart": "01:30",
+  "windowEnd": "05:30",
+  "noNewWorkAfter": "05:15",
+  "hardStop": "06:00",
+  "puzzleBufferDays": 21,
+  "newProjectEveryDays": 7,
+  "levels": {
+    "off": { "tasks": 0, "fixRounds": 0 },
+    "low": { "tasks": 1, "fixRounds": 0 },
+    "normal": { "tasks": 2, "fixRounds": 1 },
+    "high": { "tasks": 3, "fixRounds": 2 }
+  },
+  "defaultLevel": "normal",
+  "models": {
+    "director": "claude-sonnet-5-5",
+    "playtester": "claude-sonnet-5-5",
+    "builder": { "provider": "claudeAgent", "model": "claude-sonnet-5-5" },
+    "screener": "haiku"
+  }
+}

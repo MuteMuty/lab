@@ -1,0 +1,4 @@
+[
+  { "name": "afterstep", "repo": "MuteMuty/afterstep", "path": "afterstep", "worker": "afterstep", "public": true },
+  { "name": "hub", "repo": "MuteMuty/lab", "path": "lab/hub", "worker": "lab-hub", "public": true }
+]
