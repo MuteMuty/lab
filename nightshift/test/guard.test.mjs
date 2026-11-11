@@ -47,6 +47,8 @@ const blocked = [
   ["git add secrets", () => bash("git add ../.secrets/cloudflare.env")],
   ["unbalanced quote rm", () => bash("rm -rf 'oops")],
   ["unknown var path", () => bash("rm -rf $SOMEWHERE/x")],
+  ["$LAB escape", () => bash("rm -rf $LAB/../Documents")],
+  ["foreign repo with full stop", () => bash('echo "see MuteMuty/resume."')],
   ["d1 other database", () => bash("npx wrangler d1 execute prod-db --remote --command 'drop table x'")],
   ["wrangler login", () => bash("npx wrangler logout")],
 ];
@@ -69,6 +71,9 @@ const allowed = [
   ["redirect in lab", () => bash("node gen.mjs > web/public/data.json 2>/dev/null")],
   ["grep pipe", () => bash("git log --oneline | head -5")],
   ["gh issue create", () => bash("gh issue create -R MuteMuty/lab -t 'x' -F /private/tmp/x/body.md")],
+  ["git -C $LAB worktree remove", () => bash("git -C $LAB/afterstep worktree remove $LAB/.worktrees/night-x --force", "/wt/afterstep")],
+  ["${LAB} braces", () => bash("rm -rf ${LAB}/.worktrees/playtest-x")],
+  ["lab repo before a full stop", () => bash('node log.mjs note 2026-11-11 "pushed to MuteMuty/lab."')],
   ["wrangler rollback", () => bash("npx wrangler rollback abc --message 'auto' -y")],
 ];
 

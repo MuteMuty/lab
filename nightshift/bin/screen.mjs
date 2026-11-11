@@ -65,6 +65,7 @@ export function issueBody(s, verdict) {
 }
 
 export function fileIssue(s, verdict, { runner = run } = {}) {
+  if (process.env.DRY_RUN === "1") return null;
   const dir = mkdtempSync(join(tmpdir(), "ns-issue-"));
   const f = join(dir, "body.md");
   writeFileSync(f, issueBody(s, verdict));

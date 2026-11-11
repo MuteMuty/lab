@@ -150,6 +150,8 @@ function toPath(word, cwd, ctx) {
   if (word === undefined) return null;
   let w = word;
   w = w.replace(/^~(?=\/|$)/, ctx.home).replace(/\$\{?HOME\}?/g, ctx.home);
+  // The night shift's own shorthands (DIRECTOR.md): LAB and NS.
+  w = w.replace(/\$\{LAB\}|\$LAB(?![A-Za-z0-9_])/g, ctx.lab).replace(/\$\{NS\}|\$NS(?![A-Za-z0-9_])/g, `${ctx.lab}/lab/nightshift/bin`);
   const tmpdirEnv = (ctx.env?.TMPDIR ?? "").replace(/\/$/, "");
   if (tmpdirEnv) w = w.replace(/\$\{?TMPDIR\}?/g, tmpdirEnv);
   if (w.includes("$") || w.includes("`")) return null;
@@ -371,7 +373,7 @@ function checkCommand(command, cwd, ctx) {
     if (r) return r;
   }
   for (const m of command.matchAll(/(?:github\.com[/:]|\b)MuteMuty\/([A-Za-z0-9_.-]+)/g)) {
-    const repo = m[1].replace(/\.git$/, "");
+    const repo = m[1].replace(/\.git$/, "").replace(/\.+$/, "");
     if (!ctx.allowRepos.includes(repo)) return `repository MuteMuty/${repo} is not a lab repo`;
   }
   const t = tokenize(sub.text);

@@ -22,6 +22,7 @@ export function pull(opts) {
 export function mark(id, status, opts) {
   if (!Number.isInteger(id) || id < 1) throw new Error(`bad suggestion id: ${id}`);
   if (!STATUSES.has(status)) throw new Error(`bad status: ${status}`);
+  if (process.env.DRY_RUN === "1") return { id, status, dryRun: true };
   d1(`update suggestions set status = '${status}' where id = ${id}`, opts);
   return { id, status };
 }

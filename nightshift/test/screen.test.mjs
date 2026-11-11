@@ -48,3 +48,17 @@ test("mark only accepts integer ids and known statuses", () => {
   assert.throws(() => mark("1; drop table suggestions", "accepted", { runner: () => ({ code: 0 }) }));
   assert.throws(() => mark(3, "deleted", { runner: () => ({ code: 0 }) }));
 });
+
+test("dry run never files issues or writes to the database", async () => {
+  const { fileIssue } = await import("../bin/screen.mjs");
+  process.env.DRY_RUN = "1";
+  try {
+    let called = false;
+    const runner = () => { called = true; return { code: 0, stdout: "https://x", stderr: "" }; };
+    assert.equal(fileIssue({ id: 1, text: "t" }, { title: "T", summary: "S", reason: "R" }, { runner }), null);
+    assert.deepEqual(mark(1, "accepted", { runner }), { id: 1, status: "accepted", dryRun: true });
+    assert.equal(called, false);
+  } finally {
+    delete process.env.DRY_RUN;
+  }
+});
