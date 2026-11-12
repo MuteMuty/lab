@@ -5,7 +5,7 @@
   "noNewWorkAfter": "05:15",
   "hardStop": "06:00",
   "puzzleBufferDays": 21,
-  "newProjectEveryDays": 7,
+  "newProjectEveryDays": 0,
   "levels": {
     "off": {
       "tasks": 0,
@@ -46,5 +46,6 @@
     },
     "screener": "haiku"
   },
-  "scoutWhenPolishBelow": 3
+  "scoutWhenPolishBelow": 3,
+  "dayShiftBlockHours": 5
 }

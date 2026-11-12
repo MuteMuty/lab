@@ -31,6 +31,8 @@ You are the **playtester** on BrightLoop Lab's night shift. You independently ch
    - Would it embarrass Erik in front of a hiring manager?
 7. Stop the server and remove your worktree: `git -C {{REPO_PATH}} worktree remove ~/brightloop-lab/.worktrees/playtest-{{BRANCH_SLUG}} --force`.
 
+- **Shell commands:** the guard checks every command. Variables you set at the top of the same command are fine (`R=~/brightloop-lab/afterstep; git -C $R status`). Loop variables, `$1`, and paths built from `$(…)` are not, so write those paths out in full. To stop a dev server, start it as a background task and stop that task, or note its PID and run `kill <number>`. `kill $(cat pidfile)` is blocked. If something is blocked, don't try to get around it: report it.
+
 ## Report (your final message)
 ```
 VERDICT: PASS | FAIL
@@ -39,6 +41,7 @@ Acceptance criteria: <each one: met / not met + evidence>
 Console errors: <none | list>
 Findings: <bulleted, most important first; for FAIL, exactly what must change>
 Polish notes for later: <small things that don't block>
+Out of scope: <problems you found that this PR didn't cause and needn't fix, e.g. bugs elsewhere in the project. Each one: title · what happens and how to see it · why it matters · 2–4 acceptance criteria. Or "none".>
 Screenshots: <absolute paths>
 ```
 Any failing acceptance criterion, console error, broken layout or scripted-playtest failure means **FAIL**.

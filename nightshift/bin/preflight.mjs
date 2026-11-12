@@ -21,8 +21,18 @@ export function activeDayShift(raw, now) {
   if (!d || d.date !== localDate(now)) return null;
   if (!HHMM.test(String(d.noNewWorkAfter)) || !HHMM.test(String(d.hardStop))) return null;
   const t = now.getHours() * 60 + now.getMinutes();
-  if (minutes(d.noNewWorkAfter) > minutes(d.hardStop) || t >= minutes(d.hardStop)) return null;
-  return { kind: "day", noNewWorkAfter: d.noNewWorkAfter, hardStop: d.hardStop, dryRun: d.dryRun === true };
+  // A planned shift is split into blocks; the window is the block we're in. No blocks: one block from startedAt.
+  const blocks = Array.isArray(d.blocks) && d.blocks.length
+    ? d.blocks
+    : [{ start: d.startedAt ?? "00:00", noNewWorkAfter: d.noNewWorkAfter, hardStop: d.hardStop }];
+  for (const b of blocks) {
+    if (!b || !HHMM.test(String(b.start ?? "00:00")) || !HHMM.test(String(b.noNewWorkAfter)) || !HHMM.test(String(b.hardStop))) return null;
+    if (minutes(b.noNewWorkAfter) > minutes(b.hardStop)) return null;
+    if (t >= minutes(b.start ?? "00:00") && t < minutes(b.hardStop)) {
+      return { kind: "day", noNewWorkAfter: b.noNewWorkAfter, hardStop: b.hardStop, dryRun: d.dryRun === true };
+    }
+  }
+  return null;
 }
 
 /** Pure decision. */

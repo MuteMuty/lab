@@ -16,13 +16,13 @@ Every night from 02:00 to 06:00, an autonomous loop on Erik's Mac keeps the lab'
 | Use less of the Claude plan for a while | `~/brightloop-lab/dial low --until monday` (levels: off, low, normal, high, max) |
 | Use as much of the plan as the night allows | `~/brightloop-lab/dial max`: keeps building until 05:15, two tasks at once, Opus builders |
 | See the current setting | `~/brightloop-lab/dial` |
-| Give it a day you won't use the agents | `~/brightloop-lab/dayshift` (works until 23:00), or `dayshift --until 18:00` / `--hours 5`. Add `--rehearsal` for a dry run. `dayshift status`, `dayshift stop` |
+| Give it a day you won't use the agents | Today: `~/brightloop-lab/dayshift` (works until 23:00), or `--until 18:00` / `--hours 5` / `--from 13:00`. Tomorrow, planned tonight: `dayshift --tomorrow` (06:30–23:00). Add `--rehearsal` for a dry run. Check with `dayshift status`; cancel with `dayshift stop` |
 | Stop everything immediately | `touch ~/brightloop-lab/STOP` (delete the file to resume) |
 | Pause the schedule | ask Claude in T3 to pause the "Night shift" scheduled task |
 | See what was blocked | `cat ~/brightloop-lab/nightshift-blocked.jsonl` |
 
 ## Schedule
-- **Day shifts:** T3 scheduled task **"Day shift"** (`scheduled-task:91eaf305-2a97-4ba5-b769-6480d483ffdf`), triggered only by its webhook. `bin/dayshift.mjs` writes the window to `~/brightloop-lab/dayshift.json`, keeps the Mac awake with `caffeinate` for the window, and calls the webhook, whose URL lives in `~/brightloop-lab/.secrets/dayshift-webhook`. Day shifts run 06:30–23:30 at most, so they never overlap the night.
+- **Day shifts:** T3 scheduled task **"Day shift"** (`scheduled-task:91eaf305-2a97-4ba5-b769-6480d483ffdf`), triggered only by its webhook. `bin/dayshift.mjs` writes the window to `~/brightloop-lab/dayshift.json`, keeps the Mac awake with `caffeinate` for the window, and calls the webhook, whose URL lives in `~/brightloop-lab/.secrets/dayshift-webhook`. Day shifts run 06:30–23:30 at most, so they never overlap the night. A long shift is split into blocks of about 5 hours (`dayShiftBlockHours`), each a fresh director run with its own report. A small background process started by the command starts each later block on time, but only once the previous run has marked its log finished. It notes what it did in `~/brightloop-lab/dayshift-firer.log`.
 - **The task:** T3 scheduled task **"Night shift"** (`scheduled-task:c916a50d-b03d-4f86-88c5-653b5f55c052`) in the T3 project **BrightLoop Lab**, daily at 02:00 local time. Each run opens a new thread with the morning report.
 - **The T3 project:** it is rooted at `~/brightloop-lab/lab`, because scheduled runs need a git checkout. The director works on `~/brightloop-lab/...` by full paths.
 - **Keeping the Mac awake:** `pmset repeat wakeorpoweron 01:55` plus the LaunchAgent in [`launchd/`](launchd/) (caffeinate 01:56 → ~06:16). The lid must stay open and the Mac on power.

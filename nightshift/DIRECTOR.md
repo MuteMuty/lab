@@ -19,6 +19,11 @@ node $NS/log.mjs end   $DATE <step> ok|failed|skipped "<result>"
 node $NS/log.mjs note  $DATE "<free text>"
 ```
 
+**Usage limits.** If a helper fails because the Claude plan's usage limit was reached (a rate-limit or usage-limit error, not a normal failure), don't burn retries.
+- Log it.
+- Wait once with `sleep 540`, which stays under the shell's 10-minute command limit (give the call a 600000 ms timeout). Then try one more helper.
+- If that also hits the limit, start nothing new. Leave open PRs open, write the report with the limit as the reason the run ended, and stop. The next run picks up where this one left off.
+
 **Clock.** Pre-flight prints a `window`. At night it is `noNewWorkAfter` 05:15 and `hardStop` 06:00; on a day shift, the times Erik chose. Everywhere below, "05:15" means `window.noNewWorkAfter` and "06:00" means `window.hardStop`.
 - Check the clock (`date +%H:%M`) before every step.
 - After `noNewWorkAfter`, start no new helper. Be wrapping up by `hardStop`.
@@ -123,7 +128,7 @@ A scout can run in one lane while a builder works in the other. To run one:
    Log the count (found / filed). A finding that needs money, an account or a product decision gets `needs-erik` as well.
 5. Back to step 4: the new issues are now priority 6.
 
-**New projects.** At most one new project every 7 days (check the logs), and only if every launched project passed its smoke test tonight. To start one:
+**New projects.** Start one whenever an `idea` issue labelled `project` is the next task, and every launched project passed its smoke test tonight. There's no cooldown: the shift keeps working while there's something to do. Finishing what's half-built still comes first, though. Prefer moving an unlaunched project toward launch over starting a second unlaunched one, unless the first is blocked on `needs-erik`. To start one:
 1. Pick an original name.
 2. Add it to `projects.json` with `"public": false` (commit and push). The guard reads that file. Make this edit with the file editor: the guard blocks any shell command that names a repo not yet listed.
 3. `gh repo create MuteMuty/<name> --private`. Then clone it to `$LAB/<name>` with an SSH remote (`git@github.com:…`) and push a stub README to `main`, so the builder has an `origin/main` to branch from.
@@ -172,7 +177,12 @@ For each task, in order:
 4. Run `node $NS/deploy.mjs <project>`.
 5. **If `rolledBack` is true:** open a `needs-erik` issue with the details and log `failed`.
 6. **Otherwise:** comment on the issue (what shipped, the live link) and close it if it's fully done. The same goes for `polish` issues.
-7. **Polish notes:** turn the playtester's "Polish notes for later" into `polish` issues when they're concrete enough to build, so they aren't lost in the log.
+7. **Nothing found gets lost.** Every helper's report ends with "Out of scope" (builders and playtesters) or "Polish notes" (playtesters). After each helper:
+   - **In the task's scope:** it goes back to the builder as a fix round. It's never filed as a separate issue.
+   - **Outside the scope and concrete enough to build:** file it as a `polish` issue in `MuteMuty/lab`, titled `<project>: <title>`. Check open issues first for duplicates.
+   - **Needs money, an account or a product decision:** add `needs-erik` to the issue.
+   - **Too vague to build:** put it in the log.
+   - In a dry run, list these in the report instead of filing them.
 
 **e. Public changelog.** After any merge to a public project, redeploy the hub so its changelog updates: `node $NS/deploy.mjs hub`.
 

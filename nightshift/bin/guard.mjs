@@ -99,16 +99,20 @@ function extractSubstitutions(str) {
 function tokenize(str) {
   const segments = [];
   let words = [], redirects = [], cur = null, q = null, redirectNext = false;
+  // For each segment, remember the paren depth and the separators before and after it,
+  // so the policy can tell whether a variable assignment is sure to run in this shell.
+  let depth = 0, prev = "start", unbalanced = false;
   const pushWord = () => {
     if (cur === null) return;
     if (redirectNext) { redirects.push(cur); redirectNext = false; }
     else words.push(cur);
     cur = null;
   };
-  const endSegment = () => {
+  const endSegment = (sep) => {
     pushWord();
-    if (words.length || redirects.length) segments.push({ words, redirects });
+    if (words.length || redirects.length) segments.push({ words, redirects, depth, prev, sep });
     words = []; redirects = [];
+    prev = sep;
   };
   for (let i = 0; i < str.length; i++) {
     const c = str[i];
@@ -124,8 +128,11 @@ function tokenize(str) {
     if (c === " " || c === "\t") { pushWord(); continue; }
     if (c === "\n" || c === ";" || c === "|" || c === "&" || c === "(" || c === ")") {
       if (c === "&" && str[i + 1] === ">") { pushWord(); redirectNext = true; i++; if (str[i + 1] === ">") i++; continue; }
-      endSegment();
-      if ((c === "&" || c === "|" || c === ";") && str[i + 1] === c) i++;
+      let sep = c;
+      if ((c === "&" || c === "|" || c === ";") && str[i + 1] === c) { i++; sep = c + c; }
+      endSegment(sep);
+      if (c === "(") depth++;
+      if (c === ")") { depth--; if (depth < 0) { unbalanced = true; depth = 0; } }
       continue;
     }
     if (c === ">") {
@@ -144,8 +151,8 @@ function tokenize(str) {
     cur = (cur ?? "") + c;
   }
   if (q) return { error: true };
-  endSegment();
-  return { segments };
+  endSegment("end");
+  return { segments, unbalanced: unbalanced || depth !== 0 };
 }
 
 // ---------------------------------------------------------------- policy
@@ -188,7 +195,7 @@ function makeCtx(opts) {
 /** Resolve a shell word to an absolute path, or null if it depends on something unknown. */
 function toPath(word, cwd, ctx) {
   if (word === undefined) return null;
-  let w = word;
+  let w = expandVars(word, ctx);
   w = w.replace(/^~(?=\/|$)/, ctx.home).replace(/\$\{?HOME\}?/g, ctx.home);
   // The night shift's own shorthands (DIRECTOR.md): LAB and NS.
   w = w.replace(/\$\{LAB\}|\$LAB(?![A-Za-z0-9_])/g, ctx.lab).replace(/\$\{NS\}|\$NS(?![A-Za-z0-9_])/g, `${ctx.lab}/lab/nightshift/bin`);
@@ -202,6 +209,52 @@ function toPath(word, cwd, ctx) {
     w = join(cwd, w);
   }
   return resolve(w);
+}
+
+/** Replace $NAME / ${NAME} with values this command set for certain (see trackVars). */
+function expandVars(word, ctx) {
+  if (!ctx.vars?.size) return word;
+  return word.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
+    (m, a, b) => (ctx.vars.has(a ?? b) ? ctx.vars.get(a ?? b) : m));
+}
+
+/** Expand an assignment's value the way the shell would, or null if it depends on something unknown. */
+function assignedValue(raw, ctx) {
+  let v = expandVars(raw, ctx).replace(/^~(?=\/|$)/, ctx.home).replace(/\$\{?HOME\}?/g, ctx.home);
+  v = v.replace(/\$\{LAB\}|\$LAB(?![A-Za-z0-9_])/g, ctx.lab).replace(/\$\{NS\}|\$NS(?![A-Za-z0-9_])/g, `${ctx.lab}/lab/nightshift/bin`);
+  return v.includes("$") || v.includes("`") ? null : v;
+}
+
+const BLOCK_OPEN = new Set(["if", "while", "until", "for", "select", "case", "{", "function"]);
+const BLOCK_CLOSE = new Set(["fi", "done", "esac", "}"]);
+const VAR_WRITERS = new Set(["unset", "read", "local", "declare", "typeset", "readonly", "export", "for", "select", "getopts", "mapfile", "readarray", "eval", "source", "."]);
+const ASSIGN = /^([A-Za-z_][A-Za-z0-9_]*)\+?=(.*)$/s;
+
+/**
+ * Learn variables from plain top-level assignments (`R=…;`, `export R=…;`) that the shell is sure to
+ * run in this shell: not in ( ), a pipeline, the background, after && or ||, or inside if/loops/case/{ }.
+ * Anything else that might set or clear a variable makes it unknown again, so a path using it fails closed.
+ */
+function trackVars(seg, state, ctx) {
+  const w = seg.words;
+  if (!w.length) return;
+  const first = w[0];
+  const certain = !state.unbalanced && seg.depth === 0 && state.block === 0 &&
+    ["start", ";", "\n"].includes(seg.prev) && [";", "&&", "\n", "end"].includes(seg.sep);
+  const plain = w.every((x) => ASSIGN.test(x)) && !w.some((x) => /^[A-Za-z_][A-Za-z0-9_]*\+=/.test(x));
+  const exported = first === "export" && w.length > 1 && w.slice(1).every((x) => ASSIGN.test(x) && !/^[A-Za-z_][A-Za-z0-9_]*\+=/.test(x));
+  if (certain && (plain || exported)) {
+    for (const x of exported ? w.slice(1) : w) {
+      const [, name, raw] = x.match(ASSIGN);
+      const v = assignedValue(raw, ctx);
+      if (v === null) ctx.vars.delete(name); else ctx.vars.set(name, v);
+    }
+  } else {
+    for (const x of w) { const m = x.match(ASSIGN); if (m) ctx.vars.delete(m[1]); }
+    if (w.some((x) => VAR_WRITERS.has(x))) for (const x of w) if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(x)) ctx.vars.delete(x);
+  }
+  if (BLOCK_OPEN.has(first)) state.block++;
+  if (BLOCK_CLOSE.has(first)) state.block = Math.max(0, state.block - 1);
 }
 
 const isFlag = (w) => w.startsWith("-") && w !== "-";
@@ -513,10 +566,12 @@ function checkCommand(command, cwd, ctx) {
   }
   const t = tokenize(sub.text);
   if (t.error) return failClosed();
-  const state = { cwd };
+  const state = { cwd, block: 0, unbalanced: t.unbalanced };
+  ctx.vars = new Map();
   for (const seg of t.segments) {
     const r = checkSegment(seg, state, ctx);
     if (r) return r;
+    trackVars(seg, state, ctx);
   }
   return null;
 }

@@ -99,3 +99,25 @@ test("STOP still wins over a day shift", () => {
 test("dial off makes a day shift maintenance-only", () => {
   assert.equal(decide({ ...base, now: at(13), dialRaw: { level: "off" }, dayShiftRaw: day() }).mode, "maintenance");
 });
+
+const blocked3 = { date: "2026-11-12", startedAt: "06:30", noNewWorkAfter: "22:15", hardStop: "23:00", blocks: [
+  { start: "06:30", noNewWorkAfter: "10:45", hardStop: "11:30" },
+  { start: "11:35", noNewWorkAfter: "15:50", hardStop: "16:35" },
+  { start: "16:40", noNewWorkAfter: "22:15", hardStop: "23:00" },
+] };
+
+test("a planned day shift doesn't touch the night run on the same date", () => {
+  const r = decide({ ...base, now: at(2), dayShiftRaw: blocked3 });
+  assert.equal(r.window.kind, "night");
+  assert.equal(r.mode, "full");
+});
+
+test("each block run gets its own block's window", () => {
+  assert.deepEqual(decide({ ...base, now: at(6, 31), dayShiftRaw: blocked3 }).window, { kind: "day", noNewWorkAfter: "10:45", hardStop: "11:30" });
+  assert.deepEqual(decide({ ...base, now: at(11, 36), dayShiftRaw: blocked3 }).window, { kind: "day", noNewWorkAfter: "15:50", hardStop: "16:35" });
+  assert.equal(decide({ ...base, now: at(16, 40), dayShiftRaw: blocked3 }).window.hardStop, "23:00");
+});
+
+test("between blocks it is not a day shift", () => {
+  assert.equal(decide({ ...base, now: at(11, 32), dayShiftRaw: blocked3 }).mode, "maintenance");
+});

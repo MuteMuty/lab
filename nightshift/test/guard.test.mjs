@@ -87,6 +87,25 @@ const blocked = [
   ["sed -i outside the lab", () => bash("sed -i '' 's/a/b/' ~/.zshrc")],
   ["d1 other database", () => bash("npx wrangler d1 execute prod-db --remote --command 'drop table x'")],
   ["wrangler login", () => bash("npx wrangler logout")],
+  // --- variables set in the same command: only trusted when the shell is sure to set them
+  ["var pointing outside the lab", () => bash("R=/etc; rm -rf $R/x")],
+  ["var set after && may be skipped", () => bash("false && R=~/brightloop-lab/afterstep/web; rm -rf $R/*")],
+  ["var set in a subshell is gone afterwards", () => bash("(R=~/brightloop-lab/afterstep/web); rm -rf $R/*")],
+  ["var set in a pipeline is gone afterwards", () => bash("R=~/brightloop-lab/afterstep/web | true; rm -rf $R/*")],
+  ["var set in the background is gone afterwards", () => bash("R=~/brightloop-lab/afterstep/web & rm -rf $R/*")],
+  ["var set inside an if block may be skipped", () => bash("if false; then\nR=~/brightloop-lab/afterstep/web\nfi\nrm -rf $R/*")],
+  ["var set inside a loop body", () => bash("while false; do\nR=~/brightloop-lab/afterstep/web\ndone\nrm -rf $R/*")],
+  ["var from a command substitution", () => bash("R=$(pwd); rm -rf $R/*")],
+  ["var unset again", () => bash("R=~/brightloop-lab/afterstep/web; unset R; rm -rf $R/*")],
+  ["var reused as a loop variable", () => bash("R=~/brightloop-lab/afterstep/web; for R in /etc; do rm -rf $R; done")],
+  ["var overwritten by read", () => bash("R=~/brightloop-lab/afterstep/web; read R < /tmp/x; rm -rf $R/*")],
+  ["prefix assignment does not set the outer var", () => bash("R=~/brightloop-lab/afterstep/web true; rm -rf $R/*")],
+  ["var naming the lab itself", () => bash("R=~/brightloop-lab; rm -rf $R")],
+  ["var naming a repo's .git", () => bash("R=~/brightloop-lab/afterstep; rm -rf $R/.git")],
+  ["exported var outside the lab", () => bash("export OUT=~/Desktop; mkdir -p $OUT")],
+  ["positional parameter", () => bash("git -C $1 worktree remove x --force")],
+  ["kill a pid read from a file", () => bash("kill $(cat .preview.pid)")],
+  ["var to a non-lab repo via gh", () => bash("R=MuteMuty/resume; gh issue list -R $R")],
 ];
 const allowed = [
   // --- final review: things routine work needs
@@ -122,6 +141,13 @@ const allowed = [
   ["sed -i with empty suffix (macOS)", () => bash("sed -i '' 's/0.85rem/0.9rem/' web/src/style.css")],
   ["sed -i script with anchors and parens", () => bash("sed -i '' 's/^  board.focus({ preventScroll: true });$/  \\/\\/ NEG/' web/src/main.ts")],
   ["sed -i -e expression", () => bash("sed -i.bak -e 's/a/b/' -e 's/c/d/' web/src/style.css")],
+  // --- variables set in the same command (false positives seen on 2026-11-12)
+  ["var to a lab repo", () => bash("R=/Users/erik/brightloop-lab/afterstep; git -C $R fetch -q origin && git -C $R worktree add $LAB/.worktrees/playtest-x origin/night/x")],
+  ["var with tilde and braces", () => bash("W=~/brightloop-lab/.worktrees/playtest-x; git -C ${W} status --short")],
+  ["exported playtest output dir", () => bash('export DRY_RUN=1 PLAYTEST_BROWSER="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" PLAYTEST_OUT=/Users/erik/brightloop-lab/.worktrees/playtest-x-shots\nmkdir -p $PLAYTEST_OUT')],
+  ["var built from another var", () => bash("R=~/brightloop-lab/afterstep; W=$R/web; rm -rf $W/dist")],
+  ["var on its own line then use", () => bash("NS=~/brightloop-lab/lab/nightshift/bin; DATE=2026-11-12\nnode $NS/log.mjs end $DATE build ok x")],
+  ["var then && use", () => bash("R=~/brightloop-lab/afterstep/web && rm -rf $R/dist")],
 ];
 
 for (const [name, fn] of blocked) test(`blocks: ${name}`, () => assert.equal(fn().allow, false, JSON.stringify(fn())));
