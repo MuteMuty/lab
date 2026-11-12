@@ -16,5 +16,12 @@
       "lab-hub"
     ],
     "subdomain": "lab"
+  },
+  {
+    "name": "inkchime",
+    "repo": "MuteMuty/inkchime",
+    "path": "inkchime",
+    "worker": "inkchime",
+    "public": false
   }
 ]
