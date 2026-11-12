@@ -17,6 +17,20 @@ test("low means one task and no fix rounds", () => {
   assert.equal(d.fixRounds, 0);
 });
 
+test("max fills the window with two lanes", () => {
+  const d = resolveDial({ level: "max" }, now);
+  assert.equal(d.level, "max");
+  assert.equal(d.tasks, "fill");
+  assert.equal(d.fixRounds, 2);
+  assert.equal(d.parallel, 2);
+});
+
+test("every level says how many run at once", () => {
+  for (const level of ["off", "low", "normal", "high"]) {
+    assert.equal(resolveDial({ level }, now).parallel, 1, level);
+  }
+});
+
 test("expired until reverts to then", () => {
   const d = resolveDial({ level: "off", until: "2026-11-12", then: "normal" }, new Date(2026, 10, 12, 2));
   assert.equal(d.level, "normal");

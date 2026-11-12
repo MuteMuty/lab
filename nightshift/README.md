@@ -6,13 +6,15 @@ Every night from 02:00 to 06:00, an autonomous loop on Erik's Mac keeps the lab'
 1. **Wake:** T3 starts the scheduled task in the "BrightLoop Lab" project and the **director** follows [`DIRECTOR.md`](DIRECTOR.md).
 2. **Pre-flight and maintenance:** `bin/preflight.mjs` decides the kind of night. `bin/maintain.mjs` does cheap chores, such as keeping Afterstep's puzzles 21 days ahead.
 3. **Suggestions:** visitor ideas from lab.brightloopapps.com are screened by a model with no tools (`bin/screen.mjs`), and good ones become issues.
-4. **Building:** for each task, a **builder** opens a PR ([brief](briefs/builder.md)), and an independent **playtester** checks it ([brief](briefs/playtester.md)). Only a PASS is merged and deployed (`bin/deploy.mjs`), and a failing live check rolls back automatically.
-5. **Report:** the director posts the morning report and commits the night log to [`logs/`](logs/).
+4. **Scouting:** when the queue runs low, a **scout** explores a live project and the director files what it finds as `polish` issues ([brief](briefs/scout.md)), so a big dial never sits idle.
+5. **Building:** for each task, a **builder** opens a PR ([brief](briefs/builder.md)), and an independent **playtester** checks it ([brief](briefs/playtester.md)). Only a PASS is merged and deployed (`bin/deploy.mjs`), and a failing live check rolls back automatically.
+6. **Report:** the director posts the morning report and commits the night log to [`logs/`](logs/).
 
 ## Controls for Erik
 | Want to… | Do this |
 |---|---|
-| Use less of the Claude plan for a while | `~/brightloop-lab/dial low --until monday` (levels: off, low, normal, high) |
+| Use less of the Claude plan for a while | `~/brightloop-lab/dial low --until monday` (levels: off, low, normal, high, max) |
+| Use as much of the plan as the night allows | `~/brightloop-lab/dial max`: keeps building until 05:15, two tasks at once, Opus builders |
 | See the current setting | `~/brightloop-lab/dial` |
 | Stop everything immediately | `touch ~/brightloop-lab/STOP` (delete the file to resume) |
 | Pause the schedule | ask Claude in T3 to pause the "Night shift" scheduled task |

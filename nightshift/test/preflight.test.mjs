@@ -30,6 +30,13 @@ test("normal start is a full night", () => {
   assert.equal(r.date, "2026-11-12");
 });
 
+test("dial max is a full night that fills the window", () => {
+  const r = decide({ ...base, now: at(2), dialRaw: { level: "max" } });
+  assert.equal(r.mode, "full");
+  assert.equal(r.dial.tasks, "fill");
+  assert.equal(r.dial.parallel, 2);
+});
+
 test("dial off is maintenance-only", () => {
   assert.equal(decide({ ...base, now: at(2), dialRaw: { level: "off" } }).mode, "maintenance");
 });

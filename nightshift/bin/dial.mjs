@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The usage dial: how much of Erik's Claude plan the night shift may use.
 // Usage: dial                       show the setting
-//        dial <off|low|normal|high> [--until <weekday|YYYY-MM-DD>] [--then <level>]
+//        dial <off|low|normal|high|max> [--until <weekday|YYYY-MM-DD>] [--then <level>]
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -9,8 +9,9 @@ import { LAB, readJson, localDate, loadConfig } from "./lib.mjs";
 
 const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 const FALLBACK_LEVELS = {
-  off: { tasks: 0, fixRounds: 0 }, low: { tasks: 1, fixRounds: 0 },
-  normal: { tasks: 2, fixRounds: 1 }, high: { tasks: 3, fixRounds: 2 },
+  off: { tasks: 0, fixRounds: 0, parallel: 1 }, low: { tasks: 1, fixRounds: 0, parallel: 1 },
+  normal: { tasks: 2, fixRounds: 1, parallel: 1 }, high: { tasks: 3, fixRounds: 2, parallel: 1 },
+  max: { tasks: "fill", fixRounds: 2, parallel: 2 },
 };
 export const DIAL_FILE = join(LAB, "dial.json");
 
@@ -44,7 +45,11 @@ export function parseUntil(word, now = new Date()) {
 }
 
 function describe(d) {
-  return `${d.level} (${d.tasks} task${d.tasks === 1 ? "" : "s"} a night, ${d.fixRounds} fix round${d.fixRounds === 1 ? "" : "s"})` +
+  const tasks = d.tasks === "fill"
+    ? `tasks until ${loadConfig()?.noNewWorkAfter ?? "05:15"}`
+    : `${d.tasks} task${d.tasks === 1 ? "" : "s"} a night`;
+  const parallel = (d.parallel ?? 1) > 1 ? `, ${d.parallel} at once` : "";
+  return `${d.level} (${tasks}${parallel}, ${d.fixRounds} fix round${d.fixRounds === 1 ? "" : "s"})` +
     (d.until ? ` until ${d.until}, then ${d.then}` : "");
 }
 
