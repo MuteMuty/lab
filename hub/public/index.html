@@ -16,16 +16,19 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <header class="top">
-      <a class="mark" href="/" aria-label="BrightLoop Lab home">
-        <svg viewBox="0 0 40 24" aria-hidden="true"><path d="M12 4a8 8 0 1 0 0 16c4 0 6-3 8-8s4-8 8-8a8 8 0 1 1 0 16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-        <span>BrightLoop Lab</span>
-      </a>
-      <nav aria-label="Sections">
-        <a href="#play">Play</a>
-        <a href="#log">Night log</a>
-        <a href="#suggest">Suggest</a>
-      </nav>
+    <header class="nav">
+      <div class="nav__inner">
+        <a class="wordmark" href="/" aria-label="BrightLoop Lab home">
+          <svg class="mark" viewBox="0 0 40 24" aria-hidden="true" focusable="false"><path class="mark__loop" d="M12 4a8 8 0 1 0 0 16c4 0 6-3 8-8s4-8 8-8a8 8 0 1 1 0 16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle class="mark__point" cx="12" cy="4" r="2.6"/></svg>
+          <span class="wordmark__text">BrightLoop Lab</span>
+        </a>
+        <nav class="nav__links" aria-label="Sections">
+          <span class="nav__glow" aria-hidden="true"></span>
+          <a href="#play">Play</a>
+          <a href="#log">Night log</a>
+        </nav>
+        <a class="nav__cta" href="#suggest">Suggest an idea</a>
+      </div>
     </header>
 
     <main>
@@ -70,8 +73,9 @@
     </main>
 
     <footer class="foot">
-      <p>Made by <a href="https://github.com/MuteMuty">Erik Pahor</a> in Slovenia. Everything here is <a href="https://github.com/MuteMuty/lab">open source</a>.</p>
+      <p>Made by <a href="https://github.com/MuteMuty">Erik Pahor</a> at BrightLoop Lab</p>
     </footer>
+    <script type="module" src="/nav.js"></script>
     <script type="module" src="/app.js"></script>
   </body>
 </html>

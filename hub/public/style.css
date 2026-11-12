@@ -35,7 +35,8 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--bg-deep); }
+html { background: var(--bg-deep); scroll-padding-top: 5.5rem; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 body {
   margin: 0;
   min-height: 100dvh;
@@ -49,13 +50,126 @@ body {
 a { color: inherit; text-underline-offset: 3px; }
 :focus-visible { outline: 2.5px solid var(--dawn); outline-offset: 3px; border-radius: 4px; }
 
-.top, main, .foot { width: min(1080px, 100% - 32px); margin-inline: auto; }
-.top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 22px 0; }
-.mark { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font: 800 1.15rem/1 var(--display); letter-spacing: -0.01em; }
-.mark svg { width: 34px; height: 20px; color: var(--dawn); }
-.top nav { display: flex; gap: 18px; }
-.top nav a { color: var(--ink-dim); text-decoration: none; }
-.top nav a:hover { color: var(--ink); }
+main, .foot { width: min(1080px, 100% - 32px); margin-inline: auto; }
+main { padding-top: 76px; } /* room for the fixed header */
+
+/* ── Header: a full-width bar at the top that folds into a floating pill once you scroll,
+ * the same pattern as brightloopapps.com, in the lab's dusk colours. nav.js toggles
+ * .is-compact, measures the pill from .nav__ghost (an invisible copy held in the compact
+ * state), slides the highlight to the section you're reading and moves the bright point
+ * along the loop as the page scrolls. The compact rules are written for both. */
+.nav {
+  --nav-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --nav-dur: 650ms;
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  pointer-events: none; /* the empty band either side of the pill stays clickable */
+}
+.nav__inner {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(1080px, 100% - 32px);
+  max-width: 100%;
+  padding: 18px 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+.nav.is-ready { transition: padding var(--nav-dur) var(--nav-ease); }
+.nav.is-ready > .nav__inner {
+  transition-property: width, padding, gap, background-color, border-color, box-shadow;
+  transition-duration: var(--nav-dur);
+  transition-timing-function: var(--nav-ease);
+}
+.nav.is-compact { padding-top: 12px; }
+.nav.is-compact > .nav__inner,
+.nav__ghost > .nav__inner {
+  width: var(--pill-w, max-content);
+  max-width: calc(100% - 24px);
+  padding: 5px 5px 5px 9px;
+  gap: 4px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  border-color: var(--line);
+  box-shadow: 0 1px 2px rgb(10 6 24 / 0.08), 0 14px 36px -14px rgb(10 6 24 / 0.45);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+}
+.nav__ghost { --pill-w: max-content; position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
+.nav__ghost > .nav__inner { max-width: none; }
+
+.wordmark { display: inline-flex; align-items: center; color: var(--ink); text-decoration: none; font: 800 1.15rem/1 var(--display); letter-spacing: -0.01em; white-space: nowrap; border-radius: 999px; }
+.wordmark__text {
+  display: inline-block;
+  max-width: 10em;
+  margin-left: 10px;
+  padding-block: 0.15em; /* room for descenders inside the clip */
+  overflow: hidden;
+  transition: max-width var(--nav-dur) var(--nav-ease), margin var(--nav-dur) var(--nav-ease), opacity 300ms ease-out;
+}
+.nav.is-compact > .nav__inner .wordmark__text,
+.nav__ghost .wordmark__text { max-width: 0; margin-left: 0; opacity: 0; }
+.mark { flex: none; width: 34px; height: 20px; overflow: visible; color: var(--dawn); }
+.mark__point { fill: var(--ink); stroke: var(--bg); stroke-width: 1.2; }
+.nav.is-compact .mark { margin-inline: 4px 6px; }
+
+.nav__links { position: relative; display: flex; align-items: center; margin-left: auto; }
+.nav__links a {
+  position: relative;
+  z-index: 1;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 200ms ease-out;
+}
+.nav__links a:hover, .nav__links a[aria-current] { color: var(--ink); }
+/* The highlight behind the current section, with a bright point beneath it. */
+.nav__glow {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: var(--glow-w, 0);
+  transform: translateX(var(--glow-x, 0));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+  opacity: 0;
+  transition: transform 500ms var(--nav-ease), width 500ms var(--nav-ease), opacity 300ms ease-out;
+}
+.nav__glow::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--dawn); }
+.has-active > .nav__glow { opacity: 1; }
+
+.nav__cta {
+  color: var(--ink);
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 8px 0;
+  border-radius: 999px;
+  text-underline-offset: 3px;
+  transition: padding var(--nav-dur) var(--nav-ease), font-size var(--nav-dur) var(--nav-ease), background-color 300ms ease-out, color 300ms ease-out;
+}
+.nav.is-compact > .nav__inner .nav__cta,
+.nav__ghost .nav__cta { padding-inline: 16px; margin-left: 4px; background: var(--dawn); color: var(--dawn-ink); font-size: 0.95rem; text-decoration: none; }
+.nav.is-compact > .nav__inner .nav__cta:hover { background: color-mix(in srgb, var(--dawn) 85%, var(--ink)); }
+
+@media (max-width: 720px) {
+  /* At the top a phone shows just the wordmark and the suggest link; the section
+     links arrive with the pill, which drops the suggest button to make room. */
+  .nav:not(.is-compact) > .nav__inner .nav__links { visibility: hidden; position: absolute; }
+  .nav.is-compact > .nav__inner .nav__cta,
+  .nav__ghost .nav__cta { display: none; }
+  .nav__links a { padding-inline: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav, .nav__inner, .wordmark__text, .nav__glow, .nav__cta { transition: none !important; }
+}
 
 .hero { padding: clamp(32px, 9vw, 96px) 0 clamp(28px, 6vw, 56px); max-width: 760px; }
 .hero h1 {
