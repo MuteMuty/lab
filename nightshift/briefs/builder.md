@@ -28,7 +28,7 @@ You are a **builder** on BrightLoop Lab's night shift. You implement exactly one
 ## Done means
 1. `install`, `test` and `build` all pass. Run them and read the output.
 2. The playtest passes against a local build. Start `serve` on a free port, run `playtest http://localhost:<port>`, then stop the server.
-3. Commit with a clear message ending in `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Run `git push -u origin night/{{DATE}}-{{SLUG}}`.
+3. Commit with a clear message ending in a `Co-Authored-By: <your model name> <noreply@anthropic.com>` trailer that names the model you actually are (e.g. `Claude Sonnet 5.5`). Run `git push -u origin night/{{DATE}}-{{SLUG}}`.
 4. Run `gh pr create -R {{REPO}} --base main --head night/{{DATE}}-{{SLUG}}`, with a title and a body covering: what changed, why, how you tested it, and before/after screenshot paths if visual.
 5. Your final message lists the PR URL, the test command outputs (pass counts), and anything you couldn't do.
 
