@@ -139,3 +139,16 @@ test("a project may declare a subdomain different from its worker name", async (
   const r = await deploy("hub", { ...base, runner, worker: "lab-hub", subdomain: "lab", routes: [{ pattern: "lab.brightloopapps.com" }], smokeFn: async () => ({ ok: true }) });
   assert.equal(r.ok, true);
 });
+
+test("reports the URLs wrangler printed, so a workers.dev preview can be found", async () => {
+  const { runner: inner } = fakeRunner();
+  const runner = (cmd, args, opts) => {
+    const r = inner(cmd, args, opts);
+    if ([cmd, ...args].join(" ").includes("wrangler deploy")) {
+      return { ...r, stdout: `Uploaded preview\nDeployed preview triggers\n  https://preview.example-sub.workers.dev\nCurrent Version ID: ${NEXT}\n` };
+    }
+    return r;
+  };
+  const r = await deploy("preview", { ...base, runner, smokeFn: async () => ({ ok: false, results: [] }) });
+  assert.deepEqual(r.urls, ["https://preview.example-sub.workers.dev"]);
+});

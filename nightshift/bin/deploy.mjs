@@ -100,6 +100,8 @@ export async function deploy(projectName, opts = {}) {
   const d = sh(contract.commands.deploy);
   if (d.code !== 0) return { ...result, step: "deploy", error: (d.stderr || d.stdout).slice(-2000) };
   result.versionId = d.stdout.match(/Current Version ID:\s*([0-9a-f-]{36})/)?.[1] ?? null;
+  // A new project's *.workers.dev preview URL is only known from wrangler's output.
+  result.urls = [...new Set(d.stdout.match(/https:\/\/[^\s]+/g) ?? [])];
 
   for (let i = 0; i < SMOKE_TRIES; i++) {
     result.smoke = await smokeFn(projectName);
