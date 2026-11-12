@@ -33,4 +33,5 @@ Only Erik edits this file. The command guard (`bin/guard.mjs`) enforces the most
 
 ## Stopping
 - If `~/brightloop-lab/STOP` exists, stop at the next check and write only the report.
-- Hard stop by 06:00. No new helper after 05:15. Never stop between a deploy and its smoke test.
+- Hard stop by 06:00. No new helper after 05:15. On a day shift, use the window pre-flight prints instead (Erik's `dayshift` command sets it). Never stop between a deploy and its smoke test.
+- Never create, edit or delete `~/brightloop-lab/dayshift.json`, and never call the day-shift webhook: only Erik starts or stops a day shift.

@@ -59,3 +59,43 @@ test("force never overrides STOP or dial off", () => {
   assert.equal(decide({ ...base, now: at(15), force: true, stopExists: true }).mode, "stop");
   assert.equal(decide({ ...base, now: at(15), force: true, dialRaw: { level: "off" } }).mode, "maintenance");
 });
+
+const day = (o = {}) => ({ date: "2026-11-12", noNewWorkAfter: "17:15", hardStop: "18:00", ...o });
+
+test("night runs get the night window", () => {
+  const r = decide({ ...base, now: at(2) });
+  assert.deepEqual(r.window, { kind: "night", noNewWorkAfter: "05:15", hardStop: "06:00" });
+});
+
+test("a day shift is a full run outside the night window", () => {
+  const r = decide({ ...base, now: at(13, 30), dayShiftRaw: day() });
+  assert.equal(r.mode, "full");
+  assert.deepEqual(r.window, { kind: "day", noNewWorkAfter: "17:15", hardStop: "18:00" });
+});
+
+test("a day-shift rehearsal is a dry run", () => {
+  const r = decide({ ...base, now: at(13, 30), dayShiftRaw: day({ dryRun: true }) });
+  assert.equal(r.mode, "dry-run");
+  assert.equal(r.window.kind, "day");
+});
+
+test("a stale or finished day shift is ignored", () => {
+  assert.equal(decide({ ...base, now: at(13), dayShiftRaw: day({ date: "2026-11-11" }) }).mode, "maintenance");
+  assert.equal(decide({ ...base, now: at(18, 0), dayShiftRaw: day() }).mode, "maintenance");
+  const night = decide({ ...base, now: at(2), dayShiftRaw: day({ date: "2026-11-11" }) });
+  assert.equal(night.window.kind, "night");
+});
+
+test("a malformed day shift is ignored", () => {
+  for (const bad of [day({ hardStop: "25:00" }), day({ noNewWorkAfter: "19:00" }), "garbage", null]) {
+    assert.equal(decide({ ...base, now: at(13), dayShiftRaw: bad }).mode, "maintenance");
+  }
+});
+
+test("STOP still wins over a day shift", () => {
+  assert.equal(decide({ ...base, now: at(13), stopExists: true, dayShiftRaw: day() }).mode, "stop");
+});
+
+test("dial off makes a day shift maintenance-only", () => {
+  assert.equal(decide({ ...base, now: at(13), dialRaw: { level: "off" }, dayShiftRaw: day() }).mode, "maintenance");
+});
