@@ -30,7 +30,7 @@
 - **Afterstep buffer:** ≥ 21 days of puzzles ahead.
 - **New projects:** at most one per 7 days. Private repo and `*.workers.dev` until launch.
 - **Suggestions:** max 500 chars, max 5 per ip_hash per day, never shown publicly raw.
-- **Public copy:** "built with AI at the speed of thought", never "AI-built". Original concepts only.
+- **Public copy:** the footer reads "Made by Erik Pahor at BrightLoop Lab" (a project may add one short line of its own and a Source link), and copy never says "built with AI at the speed of thought" or "AI-built" (changed by Erik on 2026-11-12). Original concepts only.
 - **Commits:** end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never force-push and never rewrite `main`.
 - **Runtimes:** Rust via `$HOME/.cargo/bin` (not on PATH by default). Browser: `PLAYTEST_BROWSER=/Applications/Brave Browser.app/Contents/MacOS/Brave Browser`. Install Playwright with `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`.
 
@@ -274,7 +274,7 @@
   - `changelog.json` holds the last 30 merged PRs across allowlisted public repos (`gh pr list --state merged --json title,url,mergedAt,repository`).
   - `roadmap.json` holds open issues labelled `idea` or `suggestion` that aren't `parked` (`title,url,labels`).
 - **Page:** gallery of launched projects (preview image, title, tagline, play link), "What's new" (changelog), "Coming up" (roadmap), and the suggestion form (textarea with maxlength 500, optional project select, hidden honeypot `website`).
-  - Copy line: "Small, original things to play with, built with AI at the speed of thought."
+  - Copy line: "Small, original things to play with."
   - Use the frontend-design skill for the visual design. It must feel related to but distinct from Afterstep's cyanotype, with a phone-first layout and light/dark themes.
 
 - [ ] **Step 1: Write failing tests** in `test/suggest.test.mjs` using a fake db:

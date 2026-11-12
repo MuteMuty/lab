@@ -39,7 +39,11 @@ if (nav && inner) {
   };
 
   const update = () => {
-    nav.classList.toggle("is-compact", scrollY > 24);
+    const compact = scrollY > 24;
+    if (compact !== nav.classList.contains("is-compact")) {
+      nav.classList.toggle("is-compact", compact);
+      measure(); // in case fonts or the viewport changed since the last fold
+    }
     const max = document.documentElement.scrollHeight - innerHeight;
     const progress = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
     if (loopLength && point) {

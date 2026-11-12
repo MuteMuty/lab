@@ -1,6 +1,6 @@
 # BrightLoop Lab
 
-Small, original things to click, play and poke at, built with AI at the speed of thought.
+Small, original things to click, play and poke at. Made by [Erik Pahor](https://github.com/MuteMuty).
 
 **Live:** [lab.brightloopapps.com](https://lab.brightloopapps.com)
 

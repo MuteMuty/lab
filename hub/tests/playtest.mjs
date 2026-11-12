@@ -27,6 +27,25 @@ try {
     if (overflow) fail(`${name}: horizontal scroll at ${viewport.width}px`);
     await page.screenshot({ path: join(out, `${name}-hub.png`), fullPage: true });
 
+    // The header folds into a pill on scroll; everything in it must sit inside the pill.
+    await page.evaluate(() => scrollTo(0, 600));
+    await page.waitForTimeout(1000); // the fold animates for 650 ms
+    const pill = await page.evaluate(() => {
+      const inner = document.querySelector(".nav > .nav__inner");
+      const box = inner.getBoundingClientRect();
+      const out = [...inner.querySelectorAll(".wordmark, .nav__links a, .nav__cta")]
+        .filter((el) => getComputedStyle(el).display !== "none")
+        .map((el) => ({ el, r: el.getBoundingClientRect() }))
+        .filter(({ r }) => r.left < box.left - 0.5 || r.right > box.right - 2 || r.top < box.top - 0.5 || r.bottom > box.bottom + 0.5)
+        .map(({ el, r }) => `${el.textContent.trim() || el.className} [${Math.round(r.left)}–${Math.round(r.right)}] outside the pill [${Math.round(box.left)}–${Math.round(box.right)}]`);
+      return { compact: document.querySelector(".nav").classList.contains("is-compact"), out, overflowX: document.documentElement.scrollWidth > innerWidth + 1 };
+    });
+    if (!pill.compact) fail(`${name}: header didn't fold into a pill after scrolling`);
+    for (const o of pill.out) fail(`${name}: ${o}`);
+    if (pill.overflowX) fail(`${name}: horizontal scroll with the pill`);
+    await page.screenshot({ path: join(out, `${name}-pill.png`), clip: { x: 0, y: 0, width: viewport.width, height: 110 } });
+    await page.evaluate(() => scrollTo(0, 0));
+
     // Too-short input is caught in the browser.
     await page.fill("#s-text", "x");
     await page.click("#suggest-form button");

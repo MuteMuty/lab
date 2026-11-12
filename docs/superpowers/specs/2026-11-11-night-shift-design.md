@@ -6,7 +6,7 @@ Status: draft for Erik's approval · 2026-11-11 · updated with Erik's answers o
 
 Erik wants a growing set of original, clickable projects and games that people can play with, as public side projects that make his GitHub and portfolio memorable. He doesn't want to build them by hand every evening. The **Night Shift** is an autonomous loop that runs on his Mac from **02:00 to 06:00** every night and uses his Claude subscription while he sleeps. It keeps existing projects healthy, improves them, picks up new ideas from a queue, starts new projects now and then, and leaves a morning report.
 
-The loop is also a showcase in its own right: "a lab that keeps building itself" is a strong story for AI-engineer roles. Public copy says the lab is **"built with AI at the speed of thought"**, never "AI-built".
+The loop is also a showcase in its own right: "a lab that keeps building itself" is a strong story for AI-engineer roles. Public copy: the footer reads "Made by Erik Pahor at BrightLoop Lab" (a project may add one short line of its own and a Source link), and copy never says "built with AI at the speed of thought" or "AI-built" (changed by Erik on 2026-11-12).
 
 ## 2. Goals, non-goals, anti-goals
 

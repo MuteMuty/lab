@@ -138,7 +138,7 @@ A scout can run in one lane while a builder works in the other. To run one:
    - a `wrangler.jsonc` with `"workers_dev": true` and **no** custom-domain route;
    - a playable core;
    - a README in Afterstep's style;
-   - the standard footer from SAFETY.md ("Made by Erik Pahor at BrightLoop Lab", nothing else).
+   - the standard footer from SAFETY.md ("Made by Erik Pahor at BrightLoop Lab").
 5. Run `npm ci` in the main checkout, then deploy it to its `*.workers.dev` preview. The first deploy's smoke test hits `lab.json`'s launch URL and fails, which is harmless because there's nothing to roll back to. Take the preview URL from the result's `urls` and smoke it with `node $NS/smoke.mjs <name> <url>`. Then point `lab.json`'s `url` at the preview until launch, in a one-line commit.
 
 **Launch** happens only when a full playtest passes and the result is something Erik would be proud to link:
