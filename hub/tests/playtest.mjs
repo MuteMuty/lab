@@ -1,6 +1,7 @@
 // Hub playtest. Usage: node tests/playtest.mjs <baseUrl>
 // Against localhost it also submits suggestions (local D1) and checks the daily limit, and likes and
-// unlikes a card (from a made-up IP per run, so a rerun on the same day isn't "already liked").
+// unlikes a card. Both send from a made-up IP per run, so a rerun on the same day starts with a clear
+// suggestion limit and nothing "already liked".
 // Env: PLAYTEST_BROWSER, PLAYTEST_OUT.
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
@@ -143,6 +144,10 @@ try {
     if (!(await page.textContent("#s-status")).includes("at least")) fail(`${name}: short suggestion not caught`);
 
     if (local && name === "desktop-dark") {
+      // A fresh made-up IP per run: the limit counts per IP hash over 24 hours in the local D1, which keeps
+      // earlier runs' rows, so a shared IP would hit the limit at once on a second run the same day.
+      const ip = `198.19.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+      await page.route("**/api/suggest", (route) => route.continue({ headers: { ...route.request().headers(), "cf-connecting-ip": ip } }));
       let sent = 0, limited = false;
       for (let i = 0; i < 7 && !limited; i++) {
         await page.fill("#s-text", `playtest idea number ${i} ${Date.now()}`);
@@ -153,8 +158,9 @@ try {
         else if (s.includes("plenty")) limited = true;
         else fail(`${name}: unexpected status "${s}"`);
       }
+      if (sent === 0) fail(`${name}: no suggestion was accepted before the daily limit`);
       if (!limited) fail(`${name}: daily limit never kicked in`);
-      if (sent === 0 && !limited) fail(`${name}: no suggestion was accepted`);
+      await page.unroute("**/api/suggest");
       await page.screenshot({ path: join(out, `${name}-suggest.png`) });
       console.log(`${name}: ${sent} sent before the limit`);
     }
