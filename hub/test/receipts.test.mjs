@@ -18,6 +18,15 @@ test("reads receipts, ignoring junk", () => {
   assert.deepEqual(readReceipts(storage(JSON.stringify({ inkchime: A, afterstep: 5, juryloop: null }))), { inkchime: A });
 });
 
+test("drops receipts that aren't 32 lowercase hex characters, so the card can be liked again", () => {
+  const junk = { inkchime: "zzz", afterstep: A.toUpperCase(), juryloop: `${A}0`, rallyform: "", wordwell: B };
+  const shared = storage(JSON.stringify(junk));
+  assert.deepEqual(readReceipts(shared), { wordwell: B });
+  // Liking again replaces the hand-edited receipt and the next write clears the rest.
+  assert.deepEqual(saveReceipt(shared, "inkchime", A, readReceipts(shared)), { wordwell: B, inkchime: A });
+  assert.deepEqual(JSON.parse(shared.raw()), { wordwell: B, inkchime: A });
+});
+
 test("a stale tab's like keeps the other tab's receipt", () => {
   const shared = storage();
   const tab2 = readReceipts(shared); // tab 2 loads first and never hears about tab 1

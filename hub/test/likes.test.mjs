@@ -265,6 +265,59 @@ test("worker: CORS headers only for the lab's own origins", async () => {
   }
 });
 
+test("worker: a like or unlike from another site gets 403 and changes nothing", async () => {
+  const db = d1();
+  const e = env(db);
+  const { receipt } = await (await call(e, "/api/likes/afterstep", { method: "POST" })).json();
+  const unlike = { method: "DELETE", body: JSON.stringify({ receipt }), headers: { "content-type": "application/json" } };
+  for (const origin of ["https://example.com", "https://brightloopapps.com.evil.com", "http://lab.brightloopapps.com", "null"]) {
+    for (const r of [
+      await call(e, "/api/likes/inkchime", { method: "POST" }, origin),
+      await call(e, "/api/likes/afterstep", unlike, origin),
+    ]) {
+      assert.equal(r.status, 403, origin);
+      assert.equal(typeof (await r.json()).error, "string");
+      for (const [k] of r.headers) assert.ok(!k.startsWith("access-control-"), `${origin} got ${k}`);
+    }
+  }
+  assert.equal(rows(db).length, 1);
+  assert.equal(db.raw.prepare("select count(*) as n from like_hits").get().n, 1); // not even a rate-limit hit
+  const all = await (await call(e, "/api/likes")).json();
+  assert.deepEqual([all.afterstep, all.inkchime], [{ total: 1, week: 1 }, { total: 0, week: 0 }]);
+  // Without an Origin header (curl, tests) it still works.
+  assert.equal((await call(e, "/api/likes/afterstep", unlike)).status, 200);
+  assert.equal(rows(db).length, 0);
+});
+
+test("worker: the lab's own pages can still like and unlike", async () => {
+  for (const origin of ["https://lab.brightloopapps.com", "https://afterstep.brightloopapps.com", "https://juryloop.erko-erka1.workers.dev"]) {
+    const db = d1();
+    const e = env(db);
+    const liked = await call(e, "/api/likes/afterstep", { method: "POST" }, origin);
+    assert.equal(liked.status, 200, origin);
+    assert.equal(liked.headers.get("access-control-allow-origin"), origin);
+    const { receipt } = await liked.json();
+    const unliked = await call(e, "/api/likes/afterstep", { method: "DELETE", body: JSON.stringify({ receipt }), headers: { "content-type": "application/json" } }, origin);
+    assert.equal(unliked.status, 200, origin);
+    assert.equal(rows(db).length, 0);
+  }
+  // The hub page itself is same-origin wherever it runs, such as a local dev server.
+  const db = d1();
+  const local = (init) => worker.fetch(new Request("http://localhost:8787/api/likes/inkchime", {
+    ...init, headers: { "CF-Connecting-IP": "203.0.113.7", Origin: "http://localhost:8787", ...init.headers },
+  }), env(db), waitUntil);
+  const liked = await local({ method: "POST" });
+  assert.equal(liked.status, 200);
+  const { receipt } = await liked.json();
+  assert.equal((await local({ method: "DELETE", body: JSON.stringify({ receipt }), headers: { "content-type": "application/json" } })).status, 200);
+  // ...but another local port is another site.
+  const other = await worker.fetch(new Request("http://localhost:8787/api/likes/inkchime", {
+    method: "POST", headers: { "CF-Connecting-IP": "203.0.113.7", Origin: "http://localhost:9999" },
+  }), env(db), waitUntil);
+  assert.equal(other.status, 403);
+  assert.equal(rows(db).length, 0);
+});
+
 test("worker: without the likes tables it answers 503 JSON, and 204 to the lab page's quiet request", async () => {
   const e = env(d1(["0001_suggestions.sql"]));
   const r = await call(e, "/api/likes");

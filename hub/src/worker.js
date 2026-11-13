@@ -25,6 +25,11 @@ async function likesApi(request, env, ctx, url) {
     return new Response(null, { status: 204, headers: { ...headers, ...preflight } });
   }
   if (!methods.includes(request.method)) return json({ status: 405, json: { error: `Use ${methods.join(" or ")}.` } });
+  // A simple cross-origin POST still reaches the worker even when CORS hides the answer, so another
+  // site's like or unlike is refused here. No Origin (curl, tests) and same-origin pages are fine.
+  if (!list && origin !== null && origin !== url.origin && !allowedOrigin(origin)) {
+    return json({ status: 403, json: { error: "Likes only work from the lab's own pages." } });
+  }
 
   // Opportunistic cleanup, at most hourly per isolate: clears IP hashes older than 30 days.
   const now = Date.now();

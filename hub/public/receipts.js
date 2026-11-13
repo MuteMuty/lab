@@ -1,6 +1,8 @@
 // Like receipts kept in this browser, so it can take a like back. Every open tab shares them,
 // so each write re-reads storage and merges, instead of saving a tab's possibly stale copy.
 export const STORE = "lab:likes";
+const RECEIPT = /^[0-9a-f]{32}$/; // what the worker hands out and accepts back
+
 
 /** The stored receipts ({ project: receipt }), or `fallback` when storage can't be used at all. */
 export function readReceipts(storage, fallback = {}) {
@@ -9,7 +11,8 @@ export function readReceipts(storage, fallback = {}) {
   try {
     const v = JSON.parse(raw);
     if (!v || typeof v !== "object" || Array.isArray(v)) return {};
-    return Object.fromEntries(Object.entries(v).filter(([, r]) => typeof r === "string"));
+    // Anything else (say, a hand-edited value) could never unlike, so it counts as not liked.
+    return Object.fromEntries(Object.entries(v).filter(([, r]) => typeof r === "string" && RECEIPT.test(r)));
   } catch { return {}; }
 }
 
