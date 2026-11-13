@@ -30,5 +30,12 @@
     "path": "juryloop",
     "worker": "juryloop",
     "public": false
+  },
+  {
+    "name": "rallyform",
+    "repo": "MuteMuty/rallyform",
+    "path": "rallyform",
+    "worker": "rallyform",
+    "public": false
   }
 ]
