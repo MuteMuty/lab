@@ -23,5 +23,12 @@
     "path": "inkchime",
     "worker": "inkchime",
     "public": true
+  },
+  {
+    "name": "juryloop",
+    "repo": "MuteMuty/juryloop",
+    "path": "juryloop",
+    "worker": "juryloop",
+    "public": false
   }
 ]
