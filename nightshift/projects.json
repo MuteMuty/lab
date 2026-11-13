@@ -22,6 +22,6 @@
     "repo": "MuteMuty/inkchime",
     "path": "inkchime",
     "worker": "inkchime",
-    "public": false
+    "public": true
   }
 ]
