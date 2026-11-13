@@ -62,6 +62,8 @@ test("liking twice from the same ip on the same day counts once", async () => {
   assert.equal(again.status, 409);
   assert.equal(again.json.receipt, undefined);
   assert.equal(again.json.total, 1);
+  // True whether the earlier like was this person's (on another device) or someone else's on the network.
+  assert.equal(again.json.error, "This network already liked it today.");
   assert.equal((await counts(db)).afterstep.total, 1);
   // Another project, another ip, or another day is fine.
   assert.equal((await addLike("inkchime", ctx(db))).status, 200);

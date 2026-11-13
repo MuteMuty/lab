@@ -42,13 +42,16 @@ const checkLikes = (page) => page.evaluate(async () => {
     const card = cards.find((c) => c.querySelector("h3").textContent === p.title);
     const btn = card?.querySelector("button.like");
     if (!btn) { problems.push(`${p.title}: no like button`); continue; }
-    if (!btn.getAttribute("aria-label")?.startsWith(`Like ${p.title}`)) problems.push(`${p.title}: like button has no name`);
+    if (btn.getAttribute("aria-label") !== `Like ${p.title}`) problems.push(`${p.title}: like button is named "${btn.getAttribute("aria-label")}"`);
+    const desc = document.getElementById(btn.getAttribute("aria-describedby"))?.textContent;
+    if (!desc?.startsWith(`${likes[p.name]?.total} like`)) problems.push(`${p.title}: like button described as "${desc}"`);
     if (!["true", "false"].includes(btn.getAttribute("aria-pressed"))) problems.push(`${p.title}: like button has no pressed state`);
     if (btn.querySelector(".like__n").textContent !== String(likes[p.name]?.total)) problems.push(`${p.title}: shows ${btn.textContent}, API says ${likes[p.name]?.total}`);
   }
   return { available: true, problems };
 });
 
+let likesSeen = false;
 const browser = await chromium.launch({ executablePath: process.env.PLAYTEST_BROWSER || "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" });
 try {
   for (const [name, viewport, colorScheme] of [["desktop-dark", { width: 1280, height: 900 }, "dark"], ["phone-light", { width: 390, height: 844 }, "light"]]) {
@@ -106,12 +109,15 @@ try {
       const state = async () => ({ pressed: await btn.getAttribute("aria-pressed"), n: Number(await btn.locator(".like__n").textContent()) });
       const settled = () => page.waitForFunction(() => ![...document.querySelectorAll("button.like")].some((b) => b.hasAttribute("aria-busy")));
       const stored = () => page.evaluate(() => { try { return Object.keys(JSON.parse(localStorage.getItem("lab:likes")) ?? {}); } catch { return []; } });
+      const said = () => page.textContent(".sr-only[role=status]");
       const start = await state();
       if (start.pressed !== "false") fail(`${name}: ${title} starts liked in a fresh browser`);
       await btn.click();
       await settled();
       const liked = await state();
       if (liked.pressed !== "true" || liked.n !== start.n + 1) fail(`${name}: liking ${title} gave ${JSON.stringify(liked)} from ${JSON.stringify(start)}`);
+      if ((await said()) !== `Liked ${title}`) fail(`${name}: liking announced "${await said()}"`);
+      if ((await btn.getAttribute("aria-label")) !== `Like ${title}`) fail(`${name}: like button renamed to "${await btn.getAttribute("aria-label")}"`);
       if ((await stored()).length !== 1) fail(`${name}: the like's receipt wasn't remembered`);
       await page.reload({ waitUntil: "networkidle" });
       await btn.waitFor({ timeout: 5000 }).catch(() => fail(`${name}: like button missing after reload`));
@@ -124,6 +130,7 @@ try {
       await settled();
       const unliked = await state();
       if (unliked.pressed !== "false" || unliked.n !== start.n) fail(`${name}: unliking ${title} with the keyboard gave ${JSON.stringify(unliked)}`);
+      if ((await said()) !== `Unliked ${title}`) fail(`${name}: unliking announced "${await said()}"`);
       if ((await stored()).length !== 0) fail(`${name}: the receipt wasn't forgotten after unliking`);
       if (await page.locator(".like-note:not([hidden])").count()) fail(`${name}: like error shown: ${await page.textContent(".like-note:not([hidden])")}`);
       console.log(`${name}: liked and unliked ${title} (${start.n} → ${liked.n} → ${unliked.n})`);
@@ -152,6 +159,65 @@ try {
       console.log(`${name}: ${sent} sent before the limit`);
     }
     await page.close();
+    if (likes.available) likesSeen = true;
+  }
+
+  // Two tabs share one browser's receipts. Tab 2 first plays a stale tab (it ignores storage events), and its
+  // like must not drop tab 1's receipt. Then both listen, and an unlike in one shows up in the other.
+  if (local && likesSeen) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "dark" });
+    const ip = `198.18.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+    await ctx.route("**/api/likes/*", (route) => route.continue({ headers: { ...route.request().headers(), "cf-connecting-ip": ip } }));
+    const t1 = await ctx.newPage(), t2 = await ctx.newPage();
+    await t2.addInitScript(() => {
+      window.__stale = true;
+      addEventListener("storage", (e) => window.__stale && e.stopImmediatePropagation(), true);
+    });
+    for (const [n, t] of [["tab 1", t1], ["tab 2", t2]]) {
+      t.on("console", (m) => m.type() === "error" && fail(`two tabs, ${n}: console error: ${m.text()}`));
+      t.on("pageerror", (e) => fail(`two tabs, ${n}: page error: ${e.message}`));
+      await t.goto(base, { waitUntil: "networkidle" });
+      await t.waitForSelector(".card .like", { timeout: 5000 }).catch(() => fail(`two tabs, ${n}: no like buttons`));
+    }
+    const [a, b] = await t1.$$eval(".card h3", (hs) => hs.map((h) => h.textContent));
+    const btn = (t, title) => t.locator(".card", { has: t.locator("h3", { hasText: title }) }).locator("button.like");
+    const settled = (t) => t.waitForFunction(() => ![...document.querySelectorAll("button.like")].some((x) => x.hasAttribute("aria-busy")));
+    const pressed = (t, title) => btn(t, title).getAttribute("aria-pressed");
+    const count = async (t, title) => Number(await btn(t, title).locator(".like__n").textContent());
+    const stored = () => t1.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("lab:likes")) ?? {}).sort().join(", "));
+    const press = async (t, title) => { await btn(t, title).click(); await settled(t); };
+    if (!b) fail("two tabs: need two cards");
+    else {
+      const startA = await count(t1, a), startB = await count(t1, b);
+      await press(t1, a);
+      await press(t2, b); // stale: tab 2 still thinks nothing is liked
+      const names = await t1.evaluate(async () => Object.fromEntries((await (await fetch("/data/projects.json")).json()).map((p) => [p.title, p.name])));
+      const want = [names[a], names[b]].sort().join(", ");
+      if ((await stored()) !== want) fail(`two tabs: stored receipts are [${await stored()}], want [${want}]`);
+      for (const t of [t1, t2]) await t.reload({ waitUntil: "networkidle" });
+      await t2.evaluate(() => { window.__stale = false; });
+      for (const [n, t] of [["tab 1", t1], ["tab 2", t2]]) {
+        await btn(t, b).waitFor({ timeout: 5000 }).catch(() => {});
+        for (const title of [a, b]) if ((await pressed(t, title)) !== "true") fail(`two tabs, ${n}: ${title} not liked after reload`);
+      }
+      await press(t1, a);
+      await t2.waitForFunction((title) => [...document.querySelectorAll(".card")].find((c) => c.querySelector("h3").textContent === title)
+        ?.querySelector("button.like").getAttribute("aria-pressed") === "false", a, { timeout: 3000 })
+        .catch(() => fail(`two tabs: unliking ${a} in tab 1 didn't show in tab 2`));
+      if ((await count(t2, a)) !== startA) fail(`two tabs: tab 2 shows ${a} at ${await count(t2, a)}, want ${startA}`);
+      await press(t2, b);
+      await t1.waitForFunction((title) => [...document.querySelectorAll(".card")].find((c) => c.querySelector("h3").textContent === title)
+        ?.querySelector("button.like").getAttribute("aria-pressed") === "false", b, { timeout: 3000 })
+        .catch(() => fail(`two tabs: unliking ${b} in tab 2 didn't show in tab 1`));
+      if ((await count(t1, b)) !== startB) fail(`two tabs: tab 1 shows ${b} at ${await count(t1, b)}, want ${startB}`);
+      if ((await stored()) !== "") fail(`two tabs: receipts left after unliking both: [${await stored()}]`);
+      for (const [n, t] of [["tab 1", t1], ["tab 2", t2]]) {
+        if (await t.locator(".like-note:not([hidden])").count()) fail(`two tabs, ${n}: like error shown: ${await t.textContent(".like-note:not([hidden])")}`);
+        for (const p of (await checkLikes(t)).problems) fail(`two tabs, ${n}: ${p}`);
+      }
+      console.log(`two tabs: liked ${a} and ${b} from separate tabs, both kept, both unliked, each tab saw the other's change`);
+    }
+    await ctx.close();
   }
 } finally {
   await browser.close();

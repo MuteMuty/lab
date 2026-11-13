@@ -76,7 +76,7 @@ export function addLike(project, { db, projects, ip, salt, now = new Date() }) {
       db.prepare(COUNTS).bind(project, dayOf(now, 6)),
     ]);
     const c = counts(after.results?.[0]);
-    if (!added.meta?.changes) return reply(409, { error: "Someone on your network already liked this today.", ...c });
+    if (!added.meta?.changes) return reply(409, { error: "This network already liked it today.", ...c });
     return reply(200, { receipt, ...c });
   });
 }
