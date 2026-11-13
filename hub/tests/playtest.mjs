@@ -23,6 +23,18 @@ try {
     if (!(await page.goto(base, { waitUntil: "networkidle" }).catch((e) => fail(`${name}: load failed: ${e.message}`)))) { await page.close(); continue; }
     if (!(await page.waitForSelector(".card h3", { timeout: 5000 }).catch(() => null))) fail(`${name}: no project cards`);
     else if (!(await page.textContent(".card h3")).includes("Afterstep")) fail(`${name}: Afterstep card missing`);
+    // Every project in the data gets a card whose preview actually loads.
+    const cards = await page.evaluate(async () => {
+      const want = (await (await fetch("/data/projects.json")).json()).map((p) => p.title);
+      await Promise.all([...document.querySelectorAll(".card img")].map((i) => i.decode().catch(() => {})));
+      const have = [...document.querySelectorAll(".card")].map((c) => ({ title: c.querySelector("h3").textContent, img: c.querySelector("img").naturalWidth }));
+      return { want, have };
+    });
+    for (const t of cards.want) {
+      const c = cards.have.find((h) => h.title === t);
+      if (!c) fail(`${name}: ${t} card missing`);
+      else if (!c.img) fail(`${name}: ${t} preview didn't load`);
+    }
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     if (overflow) fail(`${name}: horizontal scroll at ${viewport.width}px`);
     await page.screenshot({ path: join(out, `${name}-hub.png`), fullPage: true });
