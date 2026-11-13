@@ -8,5 +8,15 @@
     "preview": "/previews/afterstep.jpg",
     "tech": ["Rust", "WebAssembly", "TypeScript"],
     "launched": "2026-11-10"
+  },
+  {
+    "name": "inkchime",
+    "title": "Inkchime",
+    "tagline": "Draw a song: colour picks the instrument, height the pitch, thickness the volume.",
+    "url": "https://inkchime.brightloopapps.com",
+    "repo": "MuteMuty/inkchime",
+    "preview": "/previews/inkchime.jpg",
+    "tech": ["TypeScript", "Web Audio", "Canvas"],
+    "launched": "2026-11-13"
   }
 ]
