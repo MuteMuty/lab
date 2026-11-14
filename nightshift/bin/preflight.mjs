@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // Pre-flight: decide what kind of night this is, before any model work.
-// CLI prints one JSON object: { go, mode, reason, dial, window, recover, date, pull, smoke }.
+// CLI prints one JSON object: { go, mode, reason, dial, window, recover, date, pull, smoke, likes, likesTrend }.
 // `window` says when to stop: the night window from config.json, or a day shift
 // that Erik started with ~/brightloop-lab/dayshift (read from dayshift.json).
+// `likes` is the hub's like API ({ <project>: { total, week } }, or null if it failed);
+// `likesTrend` compares it with the likes recorded in earlier night logs (lab#19).
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { LAB, readJson, localDate, run, loadConfig, loadProjects, projectDir } from "./lib.mjs";
 import { resolveDial, DIAL_FILE } from "./dial.mjs";
-import { findUnfinished } from "./log.mjs";
+import { findUnfinished, likesHistory } from "./log.mjs";
 import { smoke } from "./smoke.mjs";
 
 const minutes = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
@@ -33,6 +35,57 @@ export function activeDayShift(raw, now) {
     }
   }
   return null;
+}
+
+export const LIKES_URL = "https://lab.brightloopapps.com/api/likes";
+const count = (n) => Number.isInteger(n) && n >= 0;
+
+/** The like counts, or null on any failure (network, timeout, non-200, bad JSON, wrong shape). */
+export async function fetchLikes({ fetch = globalThis.fetch, url = LIKES_URL, timeoutMs = 5000 } = {}) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), headers: { accept: "application/json" } });
+    if (res.status !== 200) return null;
+    const data = await res.json();
+    if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+    const ok = Object.values(data).every((v) => v && typeof v === "object" && count(v.total) && count(v.week));
+    return ok ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+const daysBefore = (date, n) => new Date(Date.parse(`${date}T00:00:00Z`) - n * 864e5).toISOString().slice(0, 10);
+
+/**
+ * Pure. Compares today's likes with `history` ([{ date, likes }], oldest first, from the night logs).
+ * - `line`: "Likes this week: afterstep 12 (+4), inkchime 3 (new)". The number is `week`; (+n) is the
+ *   change in `total` since `previous` (the last earlier day with a record); (new) means not in that record.
+ * - `top`: the launched project with the most likes this week; null on a tie or when none has any.
+ * - `quiet`: launched projects whose `total` hasn't grown since `since` (the newest record at least 14 days
+ *   old) while another's has. A project missing from that record isn't judged. null: not enough history yet.
+ */
+export function likesTrend({ likes, history, projects, today }) {
+  if (!likes) return null;
+  const launched = projects.filter((p) => p.public && p.name !== "hub" && likes[p.name]).map((p) => p.name);
+  const prev = history.filter((h) => h.date < today).at(-1) ?? null;
+  const change = (name) => {
+    const before = prev?.likes?.[name]?.total;
+    if (!Number.isInteger(before)) return "new";
+    const d = likes[name].total - before;
+    return d < 0 ? `-${-d}` : `+${d}`;
+  };
+  const line = `Likes this week: ${launched.map((n) => `${n} ${likes[n].week} (${change(n)})`).join(", ") || "none"}`;
+  const ranked = [...launched].sort((a, b) => likes[b].week - likes[a].week);
+  const best = likes[ranked[0]]?.week ?? 0;
+  const top = best > 0 && likes[ranked[1]]?.week !== best ? ranked[0] : null;
+  const old = history.filter((h) => h.date <= daysBefore(today, 14)).at(-1);
+  let quiet = null;
+  if (old) {
+    const gain = Object.fromEntries(launched.filter((n) => Number.isInteger(old.likes?.[n]?.total)).map((n) => [n, likes[n].total - old.likes[n].total]));
+    const anyGrew = Object.values(gain).some((g) => g > 0);
+    quiet = { since: old.date, projects: anyGrew ? Object.keys(gain).filter((n) => gain[n] <= 0) : [] };
+  }
+  return { line, previous: prev?.date ?? null, top, quiet };
 }
 
 /** Pure decision. */
@@ -73,6 +126,8 @@ async function main() {
       const r = run("git", ["-C", dir, "pull", "--ff-only", "-q"]);
       return { repo, ok: r.code === 0, error: r.code ? r.stderr.trim().slice(0, 300) : undefined };
     });
+    result.likes = await fetchLikes();
+    result.likesTrend = likesTrend({ likes: result.likes, history: likesHistory(), projects: loadProjects(), today: result.date });
     result.smoke = {};
     for (const p of loadProjects().filter((p) => p.public)) {
       if (existsSync(join(projectDir(p), "lab.json"))) result.smoke[p.name] = await smoke(p.name);

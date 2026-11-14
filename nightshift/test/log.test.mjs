@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { startLog, stepBegin, stepEnd, finishLog, findUnfinished } from "../bin/log.mjs";
+import { startLog, stepBegin, stepEnd, finishLog, findUnfinished, likesHistory } from "../bin/log.mjs";
 
 function dir() {
   const d = mkdtempSync(join(tmpdir(), "ns-log-"));
@@ -46,4 +46,27 @@ test("a second run on the same day gets its own heading and is running again", (
   const text = readFileSync(path, "utf8");
   assert.match(text, /^status: running$/m);
   assert.match(text, /^## Run \d\d:\d\d · mode full · dial low$/m);
+});
+
+test("start records the likes from pre-flight, and history reads the last record of each earlier day", () => {
+  const d = dir();
+  startLog("2026-11-12", { dial: "low", mode: "full", likes: { afterstep: { total: 1, week: 1 } } }, d);
+  startLog("2026-11-12", { dial: "low", mode: "full", likes: { afterstep: { total: 2, week: 2 } } }, d);
+  startLog("2026-11-13", { dial: "low", mode: "full", likes: null }, d);
+  const path = startLog("2026-11-14", { dial: "low", mode: "full", likes: { afterstep: { total: 5, week: 4 } } }, d);
+  assert.match(readFileSync(path, "utf8"), /^likes: \{"afterstep":\{"total":5,"week":4\}\}$/m);
+  assert.doesNotMatch(readFileSync(join(d, "2026-11-13.md"), "utf8"), /^likes:/m);
+  writeFileSync(join(d, "2026-11-10.md"), "---\nstatus: done\n---\n\nlikes: {broken\n");
+  assert.deepEqual(likesHistory(d), [
+    { date: "2026-11-12", likes: { afterstep: { total: 2, week: 2 } } },
+    { date: "2026-11-14", likes: { afterstep: { total: 5, week: 4 } } },
+  ]);
+  assert.deepEqual(likesHistory(join(d, "missing")), []);
+});
+
+test("the likes line doesn't confuse the frontmatter or open steps", () => {
+  const d = dir();
+  startLog("2026-11-14", { dial: "low", mode: "full", likes: { afterstep: { total: 5, week: 4 } } }, d);
+  stepBegin("2026-11-14", "build", "afterstep", d);
+  assert.deepEqual(findUnfinished(d), { date: "2026-11-14", openSteps: [{ id: "build", detail: "afterstep" }] });
 });

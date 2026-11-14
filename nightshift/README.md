@@ -4,7 +4,7 @@ Every night from 02:00 to 06:00, an autonomous loop on Erik's Mac keeps the lab'
 
 ## How a night works
 1. **Wake:** T3 starts the scheduled task in the "BrightLoop Lab" project and the **director** follows [`DIRECTOR.md`](DIRECTOR.md).
-2. **Pre-flight and maintenance:** `bin/preflight.mjs` decides the kind of night. `bin/maintain.mjs` does cheap chores, such as keeping Afterstep's puzzles 21 days ahead.
+2. **Pre-flight and maintenance:** `bin/preflight.mjs` decides the kind of night and reads the lab's like counts (`/api/likes`; `null` if that fails). `log.mjs start` records them in the night log, so the next run can tell what changed. Likes decide which project's polish goes first and which project the scout visits most ([`DIRECTOR.md`](DIRECTOR.md), lab#19). `bin/maintain.mjs` does cheap chores, such as keeping Afterstep's puzzles 21 days ahead.
 3. **Suggestions:** visitor ideas from lab.brightloopapps.com are screened by a model with no tools (`bin/screen.mjs`), and good ones become issues.
 4. **Scouting:** when the queue runs low, a **scout** explores a live project and the director files what it finds as `polish` issues ([brief](briefs/scout.md)), so a big dial never sits idle.
 5. **Building:** for each task, a **builder** opens a PR ([brief](briefs/builder.md)), and an independent **playtester** checks it ([brief](briefs/playtester.md)). Only a PASS is merged and deployed (`bin/deploy.mjs`), and a failing live check rolls back automatically.
@@ -32,4 +32,4 @@ Every night from 02:00 to 06:00, an autonomous loop on Erik's Mac keeps the lab'
 [`SAFETY.md`](SAFETY.md) holds the rules. `bin/guard.mjs` enforces them as a Claude Code hook on every command. A scoped Cloudflare key means other domains can't be reached at all.
 
 ## Tests
-`node --test nightshift/test/` (dial, pre-flight, log, guard, deploy, maintenance, screener).
+`node --test nightshift/test/` (dial, pre-flight and likes, log, guard, deploy, maintenance, screener). The tests never reach the network.
