@@ -12,7 +12,7 @@ Only Erik edits this file. The command guard (`bin/guard.mjs`) enforces the most
 - Never touch Erik's other repos (resume, CleanPath, telco-churn, MuteMuty/MuteMuty, …), even to read their issues.
 
 ## Cloudflare
-- Deploy, roll back and reach the live database only through the helpers (`bin/deploy.mjs`, `bin/suggestions.mjs`). They use the scoped key, and direct `wrangler deploy`/`rollback`/`secret`/`--remote` commands are blocked.
+- Deploy, roll back and reach the live database only through the helpers (`bin/deploy.ts`, `bin/suggestions.ts`). They use the scoped key, and direct `wrangler deploy`/`rollback`/`secret`/`--remote` commands are blocked.
 - Only Workers in `nightshift/projects.json`. New subdomains only for launching new lab projects.
 - Never edit or delete DNS records. Never touch the brightloopapps.com / www site or breza-app.com.
 - Never enable anything paid.

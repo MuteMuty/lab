@@ -514,7 +514,7 @@ function checkSegment(seg, state, ctx) {
     case "wrangler": {
       const nf = nonFlags(args);
       const sub = nf[0];
-      if (WRANGLER_VIA_HELPER.has(sub)) return `wrangler ${sub} is not allowed here: deploy with nightshift/bin/deploy.mjs`;
+      if (WRANGLER_VIA_HELPER.has(sub)) return `wrangler ${sub} is not allowed here: deploy with nightshift/bin/deploy.ts`;
       if (!WRANGLER_OK.has(sub)) return `wrangler ${sub ?? ""} is not allowed`;
       if (sub === "versions" && !["list", "view"].includes(nf[1])) return "wrangler versions may only be listed";
       if (WRANGLER_WORKER_SCOPED.has(sub)) {
@@ -527,7 +527,7 @@ function checkSegment(seg, state, ctx) {
         if (!ctx.allowWorkers.includes(name)) return `wrangler ${sub} for worker "${name}" is not allowed`;
       }
       if (sub === "d1") {
-        if (args.includes("--remote")) return "the live database is reached only through nightshift/bin/suggestions.mjs";
+        if (args.includes("--remote")) return "the live database is reached only through nightshift/bin/suggestions.ts";
         const d1sub = nf[1];
         if (d1sub === "delete") return "deleting databases is not allowed";
         if (D1_DB_SCOPED.has(d1sub)) {
