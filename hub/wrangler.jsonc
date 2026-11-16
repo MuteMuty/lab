@@ -1,7 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "lab-hub",
-  "main": "src/worker.js",
+  "main": "src/worker.ts",
+  // wrangler dev and deploy both bundle the browser code (web/*.ts) into public/app.js first.
+  "build": { "command": "npm run bundle", "watch_dir": "web" },
   "compatibility_date": "2026-11-01",
   "assets": { "directory": "./public", "binding": "ASSETS" },
   "d1_databases": [

@@ -3,3 +3,4 @@ node_modules/
 playtest-out/
 .superpowers/
 hub/public/data/
+hub/public/app.js
