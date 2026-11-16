@@ -4,10 +4,10 @@
   "worker": "lab-hub",
   "commands": {
     "install": "npm ci",
-    "test": "node --test test/",
-    "build": "node scripts/build-data.mjs",
+    "test": "npm test",
+    "build": "node scripts/build-data.ts",
     "serve": "npx wrangler d1 migrations apply lab-hub --local && npx wrangler dev --port {port}",
-    "playtest": "node tests/playtest.mjs",
+    "playtest": "node tests/playtest.ts",
     "deploy": "npx wrangler deploy"
   },
   "smoke": ["/", "/data/projects.json"]

@@ -1,0 +1,13 @@
+{
+  "name": "nightshift",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "tsc -p . && node --test"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "typescript": "5.8.3"
+  }
+}

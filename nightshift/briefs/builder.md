@@ -21,6 +21,7 @@ You are a **builder** on BrightLoop Lab's night shift. You implement exactly one
   If the branch already exists (a fix round), check it out into the same worktree path instead.
 - Read the project's `lab.json` and README first. Use its `install`, `test` and `build` commands. Rust lives in `$HOME/.cargo/bin`.
 - **Performance first:** keep pages fast and dependencies few. Use Rust/WASM only where it pays off.
+- **Least code, and no JavaScript:** do it in HTML and CSS when they can. When code is needed, write TypeScript, never new `.js`/`.mjs` files: Node runs `.ts` scripts and tests directly, and Vite or esbuild bundles browser code. Only generated or vendored files may be JavaScript, and they are marked in `.gitattributes`.
 - **Original work only:** no copied assets, no tracking, nothing that stores what visitors create.
 - Write a test first for any logic you add (TDD). UI-only polish needs no unit test, but must keep the playtest green.
 - Match the existing style: code, copy (plain, sentence case) and visual design.
