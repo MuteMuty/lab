@@ -49,6 +49,7 @@
   "scoutWhenPolishBelow": 3,
   "dayShiftBlockHours": 5,
   "posthog": {
-    "projectKey": "phc_C2ENESVyrPgVB4AD6G3SDSanmY9FRz59bHadStmcB9P5"
+    "projectKey": "phc_C2ENESVyrPgVB4AD6G3SDSanmY9FRz59bHadStmcB9P5",
+    "apiHost": "https://eu.posthog.com"
   }
 }

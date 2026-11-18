@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 // Pre-flight: decide what kind of night this is, before any model work.
-// CLI prints one JSON object: { go, mode, reason, dial, window, recover, date, pull, smoke, likes, likesTrend }.
+// CLI prints one JSON object: { go, mode, reason, dial, window, recover, date, pull, smoke, likes, likesTrend, usage, usageTrend }.
 // `window` says when to stop: the night window from config.json, or a day shift
 // that Erik started with ~/brightloop-lab/dayshift (read from dayshift.json).
 // `likes` is the hub's like API ({ <project>: { total, week } }, or null if it failed);
 // `likesTrend` compares it with the likes recorded in earlier night logs (lab#19).
+// `usage` is PostHog's last 7 days per project and `usageTrend` the report line and signals (lab#72, usage.ts);
+// both are null when PostHog can't be asked, like likes.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { LAB, readJson, localDate, run, loadConfig, loadProjects, projectDir, type Project } from "./lib.ts";
 import { resolveDial, DIAL_FILE, type Dial } from "./dial.ts";
-import { findUnfinished, likesHistory, type Likes, type OpenStep } from "./log.ts";
+import { findUnfinished, likesHistory, usageHistory, type Likes, type OpenStep } from "./log.ts";
+import { fetchUsage, usageTrend, type Usage, type UsageTrend } from "./usage.ts";
 import { smoke, type SmokeReport } from "./smoke.ts";
 
 export type Window = { kind: "day" | "night"; noNewWorkAfter: string; hardStop: string };
@@ -28,7 +31,8 @@ export type Preflight = {
   go: boolean; mode: "stop" | "dry-run" | "maintenance" | "full"; reason: string;
   dial: Dial; window: Window; recover: Recover; date: string;
   pull?: { repo: string; ok: boolean; error?: string }[];
-  likes?: Likes | null; likesTrend?: LikesTrend | null; smoke?: Record<string, SmokeReport>;
+  likes?: Likes | null; likesTrend?: LikesTrend | null; usage?: Usage | null; usageTrend?: UsageTrend | null;
+  smoke?: Record<string, SmokeReport>;
 };
 
 const minutes = (hhmm: string) => { const [h = 0, m = 0] = hhmm.split(":").map(Number); return h * 60 + m; };
@@ -155,6 +159,8 @@ async function main() {
     });
     result.likes = await fetchLikes();
     result.likesTrend = likesTrend({ likes: result.likes, history: likesHistory(), projects: loadProjects(), today: result.date });
+    result.usage = await fetchUsage();
+    result.usageTrend = usageTrend({ usage: result.usage, history: usageHistory(), projects: loadProjects(), today: result.date });
     result.smoke = {};
     for (const p of loadProjects().filter((p) => p.public)) {
       if (existsSync(join(projectDir(p), "lab.json"))) result.smoke[p.name] = await smoke(p.name);

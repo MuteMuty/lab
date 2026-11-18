@@ -41,6 +41,8 @@ export type Config = {
   models: Record<string, unknown>;
   scoutWhenPolishBelow: number;
   dayShiftBlockHours: number;
+  /** projectKey: the public ingestion key the pages use. apiHost: the private API usage.ts queries (lab#72). */
+  posthog?: { projectKey?: string; apiHost?: string };
 };
 
 export type RunResult = { code: number; stdout: string; stderr: string };
