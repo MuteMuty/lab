@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Privacy at BrightLoop Lab</title>
+    <meta name="description" content="What BrightLoop Lab counts, how, and what it never sends. No cookies, hosted in the EU." />
+    <meta name="theme-color" content="#1c1733" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f5f1f8" media="(prefers-color-scheme: light)" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <!-- The hub's header without its script: it stays at the top instead of folding into a pill. -->
+    <header class="nav nav--static">
+      <div class="nav__inner">
+        <a class="wordmark" href="/" aria-label="BrightLoop Lab home">
+          <svg class="mark" viewBox="0 0 40 24" aria-hidden="true" focusable="false"><path class="mark__loop" d="M12 4a8 8 0 1 0 0 16c4 0 6-3 8-8s4-8 8-8a8 8 0 1 1 0 16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle class="mark__point" cx="12" cy="4" r="2.6"/></svg>
+          <span class="wordmark__text">BrightLoop Lab</span>
+        </a>
+        <nav class="nav__links" aria-label="Sections">
+          <a href="/#play">Play</a>
+          <a href="/#log">Night log</a>
+        </nav>
+        <a class="nav__cta" href="/#suggest">Suggest an idea</a>
+      </div>
+    </header>
+
+    <main class="note">
+      <h1>Privacy</h1>
+      <p class="lede">The lab counts a few things, so the night shift can see what people enjoy and what they actually do. This is all of it.</p>
+
+      <section aria-labelledby="counted">
+        <h2 id="counted">What's counted</h2>
+        <ul>
+          <li><strong>Likes.</strong> How many times each project was liked. Pressing a heart keeps a receipt in your browser so you can take the like back. That's the only thing the lab keeps in your browser.</li>
+          <li><strong>Page views.</strong> One each time a lab page opens.</li>
+          <li><strong>Projects opened.</strong> Which project you open from <a href="/">the lab's front page</a>.</li>
+        </ul>
+        <p>Each one also carries what your browser tells any site: the page's address (without anything after a ? or #), the site you came from, and your browser, system, language, time zone and screen size.</p>
+      </section>
+
+      <section aria-labelledby="how">
+        <h2 id="how">How</h2>
+        <ul>
+          <li>No cookies, nothing saved in your browser for counting, and no accounts.</li>
+          <li>Counts are kept by PostHog in its EU cloud, which drops your IP address.</li>
+          <li>If your browser asks sites not to track you, nothing is counted except the likes you press.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="never">
+        <h2 id="never">Never sent</h2>
+        <p>Anything you type, draw, record or upload, any free text, or anything that identifies you. The one place your words are kept is the suggestion box: the night shift reads what you send, and it's never shown publicly.</p>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>Made by <a href="https://github.com/MuteMuty">Erik Pahor</a> at BrightLoop Lab. <a href="/privacy" aria-current="page">Privacy</a></p>
+    </footer>
+  </body>
+</html>

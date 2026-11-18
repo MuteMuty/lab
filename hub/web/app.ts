@@ -1,7 +1,10 @@
 // Renders the hub from /data/*.json, adds like counts when they're available, and runs the suggestion form.
-// Bundled with nav.ts and receipts.ts into public/app.js at build time (see wrangler.jsonc).
+// Bundled with nav.ts and receipts.ts into public/app.js at build time (see wrangler.jsonc). Usage events
+// go through the shared analytics script, loaded once the page is idle (analytics/load.ts).
 import "./nav.ts";
 import * as store from "./receipts.ts";
+import { loadAnalytics, track } from "./analytics/load.ts";
+import { PROJECT, EVENTS } from "./analytics-events.ts";
 
 type Project = { name: string; title: string; url: string; repo: string; preview: string; tagline: string; tech?: string[]; launched?: string };
 type Change = { repo: string; title: string; url: string; mergedAt: string };
@@ -44,6 +47,8 @@ async function render() {
         el("div", { className: "actions" },
           el("a", { className: "btn primary", href: p.url }, `Play ${p.title}`),
           el("a", { className: "btn", href: `https://github.com/${p.repo}` }, "Source"))))) }));
+  // Both links to a project (its preview and its Play button) count as opening it; see trackOpens().
+  for (const { p, li } of cards) for (const a of li.querySelectorAll("a")) if (a.href === new URL(p.url).href) a.dataset.open = p.name;
   $("projects").replaceChildren(...cards.map((c) => c.li));
   likesReady.then((likes) => likes && showLikes(cards, likes));
 
@@ -212,5 +217,17 @@ function setupForm() {
   });
 }
 
+// A visitor follows a project's card (a click, or a middle click into a new tab).
+function trackOpens() {
+  const opened = (e: MouseEvent) => {
+    const a = e.button <= 1 ? (e.target as Element).closest<HTMLAnchorElement>("a[data-open]") : null;
+    if (a) track("project_opened", { project: a.dataset.open });
+  };
+  $("projects").addEventListener("click", opened);
+  $("projects").addEventListener("auxclick", opened);
+}
+
 render();
 setupForm();
+trackOpens();
+loadAnalytics(PROJECT, EVENTS);
