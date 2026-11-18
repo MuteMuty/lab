@@ -294,7 +294,7 @@ try {
       scripts: document.scripts.length,
     }));
     if (p.h1 !== "Privacy") fail(`privacy ${name}: heading is "${p.h1}"`);
-    for (const must of ["Likes", "Page views", "Projects opened", "front page", "No cookies", "EU", "IP address", "Do Not Track", "Global Privacy Control", "Anything you type, draw, record or upload"]) {
+    for (const must of ["Likes", "Page views", "Projects opened", "front page", "Afterstep", "Puzzles started", "Puzzles finished", "11–20", "used a hint", "moves you make", "puzzles solved, hints seen, lessons done", "No cookies", "EU", "IP address", "Do Not Track", "Global Privacy Control", "Anything you type, draw, record or upload"]) {
       if (!p.text.includes(must)) fail(`privacy ${name}: doesn't mention "${must}"`);
     }
     if (!p.foot?.startsWith("Made by Erik Pahor at BrightLoop Lab") || p.erik !== "Erik Pahor" || !p.privacy) fail(`privacy ${name}: footer is "${p.foot}"`);
