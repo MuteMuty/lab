@@ -151,7 +151,8 @@ A scout can run in one lane while a builder works in the other. To run one:
    - a playable core;
    - TypeScript throughout (tests and playtest too), with no JavaScript files of its own;
    - a README in Afterstep's style;
-   - the standard footer from SAFETY.md ("Made by Erik Pahor at BrightLoop Lab");
+   - the standard footer from SAFETY.md ("Made by Erik Pahor at BrightLoop Lab"), followed by a "Privacy" link to `https://lab.brightloopapps.com/privacy`;
+   - usage events from day one (lab#71): load the hub's shared `https://lab.brightloopapps.com/analytics/v1.js` the way Afterstep does, plus an allow-list file with `$pageview` and `play_started` / `play_finished` (the convention in `lab/hub/web/analytics/guard.ts`). It sends nothing on the `*.workers.dev` preview, so the project counts from launch. At launch, a companion lab PR adds the project's events to `hub/public/privacy.html`, merged before the launch deploy;
    - a like button from day one: the heart backed by the hub's `/api/likes`, as Afterstep and Inkchime have it. It stays hidden until the count loads, hides quietly if the API fails or is slow, and the game never waits for it. Its tests and playtest mock the API, never the live one. The hub counts likes for unlaunched lab projects too, so it works on the preview.
 5. Run `npm ci` in the main checkout, then deploy it to its `*.workers.dev` preview. The first deploy's smoke test hits `lab.json`'s launch URL and fails, which is harmless because there's nothing to roll back to. Take the preview URL from the result's `urls` and smoke it with `node $NS/smoke.ts <name> <url>`. Then point `lab.json`'s `url` at the preview until launch, in a one-line commit.
 
