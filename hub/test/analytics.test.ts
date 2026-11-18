@@ -90,6 +90,29 @@ test("cleans what posthog is about to send: off-list events dropped, URLs trimme
   });
 });
 
+test("an Inkchime song link's hash, which holds the drawing, never leaves: addresses lose it", () => {
+  const allow = { $pageview: {}, play_finished: { from: ["blank", "link"] } } satisfies AllowList;
+  const clean = cleanEvent(allow, "inkchime");
+  const song = "#v1.AQBaAQQEAICAgAIQ8AeAgICAAg";
+  for (const event of ["$pageview", "play_finished"]) {
+    const out = clean({
+      uuid: "u",
+      event,
+      properties: {
+        $current_url: `https://inkchime.brightloopapps.com/${song}`,
+        $referrer: `https://inkchime.brightloopapps.com/?x=1${song}`,
+        $pathname: "/",
+        from: "link", bpm: 117, strokes: 4, link: `https://inkchime.brightloopapps.com/${song}`,
+      },
+    });
+    assert.ok(out, event);
+    assert.equal(out.properties.$current_url, "https://inkchime.brightloopapps.com/");
+    assert.equal(out.properties.$referrer, "https://inkchime.brightloopapps.com/");
+    assert.ok(!JSON.stringify(out).includes(song.slice(4)), `${event} still holds the song`);
+    assert.deepEqual(Object.keys(out.properties).filter((k) => !k.startsWith("$")).sort(), event === "$pageview" ? ["project"] : ["from", "project"]);
+  }
+});
+
 test("posthog runs cookieless in the EU with everything but named events off", () => {
   const o = options(ALLOW, "afterstep") as Record<string, unknown>;
   assert.equal(o.api_host, "https://eu.i.posthog.com");
