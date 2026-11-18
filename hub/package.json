@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-data.ts",
-    "bundle": "esbuild web/app.ts --bundle --minify --format=esm --target=es2022 --outfile=public/app.js",
+    "bundle": "node scripts/bundle.ts",
     "typecheck": "tsc -p . && tsc -p tests",
     "test": "npm run typecheck && node --test",
     "playtest": "node tests/playtest.ts"
@@ -15,5 +15,8 @@
     "playwright": "1.52.0",
     "typescript": "5.8.3",
     "wrangler": "4.160.0"
+  },
+  "dependencies": {
+    "posthog-js": "1.445.6"
   }
 }

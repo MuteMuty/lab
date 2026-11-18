@@ -4,3 +4,4 @@ playtest-out/
 .superpowers/
 hub/public/data/
 hub/public/app.js
+hub/public/analytics/

@@ -2,9 +2,12 @@
 // Against localhost it also submits suggestions (local D1) and checks the daily limit, and likes and
 // unlikes a card. Both send from a made-up IP per run, so a rerun on the same day starts with a clear
 // suggestion limit and nothing "already liked".
+// Against localhost it also checks the privacy note and usage events (lab#71): see the end of the run.
 // Env: PLAYTEST_BROWSER, PLAYTEST_OUT.
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import { mkdirSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
+import type { Queued } from "../web/analytics/guard.ts"; // and window.labAnalytics
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -54,13 +57,42 @@ const checkLikes = (page) => page.evaluate(async () => {
   return { available: true, problems };
 });
 
+// Usage events: what analytics may leave in the browser (nothing) and the hosts it may talk to.
+const LAB_KEYS = ["lab:likes"]; // the like receipts, the only thing the lab itself keeps in the browser
+const isPosthog = (url: string) => /(^|\.)posthog\.com$/.test(new URL(url).hostname);
+const leftovers = async (page) => {
+  const kept = await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }));
+  const cookies = await page.context().cookies();
+  return [
+    ...kept.local.filter((k) => !LAB_KEYS.includes(k)).map((k) => `localStorage "${k}"`),
+    ...kept.session.map((k) => `sessionStorage "${k}"`),
+    ...cookies.map((c) => `cookie "${c.name}" on ${c.domain}`),
+  ];
+};
+// The shared script must start only after the page has loaded.
+const analyticsTiming = (page) => page.evaluate(() => {
+  const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
+  const s = performance.getEntriesByType("resource").find((e) => e.name.endsWith("/analytics/v1.js"));
+  return { loaded: nav?.loadEventEnd ?? 0, started: s ? s.startTime : null };
+});
+const waitForAnalytics = (page) => page.waitForFunction(() => performance.getEntriesByType("resource").some((e) => e.name.endsWith("/analytics/v1.js")), null, { timeout: 8000 });
+// Whether the browser asks sites not to track it. Brave sends Global Privacy Control by default, so every check
+// that loads the hub sets both signals to what it means to test: by default, neither.
+const privacySignals = (target: { addInitScript: Page["addInitScript"] }, { dnt = null, gpc = false }: { dnt?: string | null; gpc?: boolean } = {}) =>
+  target.addInitScript(([dnt, gpc]) => {
+    Object.defineProperty(Navigator.prototype, "doNotTrack", { get: () => dnt, configurable: true });
+    Object.defineProperty(Navigator.prototype, "globalPrivacyControl", { get: () => gpc, configurable: true });
+  }, [dnt, gpc] as const);
+
 let likesSeen = false;
 const browser = await chromium.launch({ executablePath: process.env.PLAYTEST_BROWSER || "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" });
 try {
   for (const [name, viewport, colorScheme] of [["desktop-dark", { width: 1280, height: 900 }, "dark"], ["phone-light", { width: 390, height: 844 }, "light"]] as const) {
     const page = await browser.newPage({ viewport, colorScheme });
+    await privacySignals(page);
     page.on("console", (m) => m.type() === "error" && !/status of 429/.test(m.text()) && fail(`${name}: console error: ${m.text()}`));
     page.on("pageerror", (e) => fail(`${name}: page error: ${e.message}`));
+    page.on("request", (r) => isPosthog(r.url()) && fail(`${name}: analytics contacted ${r.url()} from ${base}`));
     if (!(await page.goto(base, { waitUntil: "networkidle" }).catch((e) => fail(`${name}: load failed: ${e.message}`)))) { await page.close(); continue; }
     if (!(await page.waitForSelector(".card h3", { timeout: 5000 }).catch(() => null))) fail(`${name}: no project cards`);
     else if (!(await page.$$eval(".card h3", (hs) => hs.some((h) => h.textContent.includes("Afterstep"))))) fail(`${name}: Afterstep card missing`);
@@ -82,6 +114,7 @@ try {
     if (!likes.available) console.log(`${name}: like counts unavailable, cards shown as before`);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     if (overflow) fail(`${name}: horizontal scroll at ${viewport.width}px`);
+    if (!(await page.$('.foot a[href="/privacy"]'))) fail(`${name}: the footer doesn't link the privacy note`);
     await page.screenshot({ path: join(out, `${name}-hub.png`), fullPage: true });
 
     // The header folds into a pill on scroll; everything in it must sit inside the pill.
@@ -166,6 +199,13 @@ try {
       await page.screenshot({ path: join(out, `${name}-suggest.png`) });
       console.log(`${name}: ${sent} sent before the limit`);
     }
+    // The shared analytics script arrives after the page has loaded, and here it's a no-op.
+    if (!(await waitForAnalytics(page).catch(() => null))) fail(`${name}: /analytics/v1.js never loaded`);
+    else {
+      const t = await analyticsTiming(page);
+      if (t.started < t.loaded) fail(`${name}: analytics started at ${Math.round(t.started)} ms, before the page loaded at ${Math.round(t.loaded)} ms`);
+    }
+    for (const l of await leftovers(page)) fail(`${name}: analytics left ${l}`);
     await page.close();
     if (likes.available) likesSeen = true;
   }
@@ -226,6 +266,181 @@ try {
       console.log(`two tabs: liked ${a} and ${b} from separate tabs, both kept, both unliked, each tab saw the other's change`);
     }
     await ctx.close();
+  }
+
+  // The privacy note: the hub's look in light and dark, on phone and desktop, with the same footer.
+  for (const [name, viewport, colorScheme] of [
+    ["desktop-dark", { width: 1280, height: 900 }, "dark"], ["desktop-light", { width: 1280, height: 900 }, "light"],
+    ["phone-dark", { width: 390, height: 844 }, "dark"], ["phone-light", { width: 390, height: 844 }, "light"],
+    ["small-phone-light", { width: 320, height: 640 }, "light"],
+  ] as const) {
+    const page = await browser.newPage({ viewport, colorScheme });
+    page.on("console", (m) => m.type() === "error" && fail(`privacy ${name}: console error: ${m.text()}`));
+    page.on("pageerror", (e) => fail(`privacy ${name}: page error: ${e.message}`));
+    const r = await page.goto(new URL("/privacy", base).href, { waitUntil: "networkidle" }).catch((e) => { fail(`privacy ${name}: load failed: ${e.message}`); return null; });
+    if (!r) { await page.close(); continue; }
+    if (!r.ok()) fail(`privacy ${name}: /privacy answered ${r.status()}`);
+    const p = await page.evaluate(() => ({
+      h1: document.querySelector("h1")?.textContent,
+      text: document.querySelector("main")?.textContent.replace(/\s+/g, " ") ?? "",
+      foot: document.querySelector(".foot")?.textContent.replace(/\s+/g, " ").trim(),
+      erik: document.querySelector<HTMLAnchorElement>('.foot a[href="https://github.com/MuteMuty"]')?.textContent,
+      privacy: Boolean(document.querySelector('.foot a[href="/privacy"]')),
+      home: Boolean(document.querySelector('.nav a.wordmark[href="/"]')),
+      font: getComputedStyle(document.querySelector("h1")).fontFamily,
+      bg: getComputedStyle(document.body).backgroundImage !== "none",
+      overflowX: document.documentElement.scrollWidth > innerWidth + 1,
+      clipped: [...document.querySelectorAll(".nav .wordmark, .nav .nav__cta")].filter((e) => e.getBoundingClientRect().right > innerWidth).map((e) => e.textContent.trim()),
+      scripts: document.scripts.length,
+    }));
+    if (p.h1 !== "Privacy") fail(`privacy ${name}: heading is "${p.h1}"`);
+    for (const must of ["Likes", "Page views", "Projects opened", "front page", "No cookies", "EU", "IP address", "Do Not Track", "Global Privacy Control", "Anything you type, draw, record or upload"]) {
+      if (!p.text.includes(must)) fail(`privacy ${name}: doesn't mention "${must}"`);
+    }
+    if (!p.foot?.startsWith("Made by Erik Pahor at BrightLoop Lab") || p.erik !== "Erik Pahor" || !p.privacy) fail(`privacy ${name}: footer is "${p.foot}"`);
+    if (!p.home) fail(`privacy ${name}: no way back to the hub`);
+    if (!p.font.includes("Bricolage")) fail(`privacy ${name}: heading font is ${p.font}`);
+    if (!p.bg) fail(`privacy ${name}: page background missing`);
+    if (p.overflowX) fail(`privacy ${name}: horizontal scroll at ${viewport.width}px`);
+    for (const c of p.clipped) fail(`privacy ${name}: "${c}" runs past the edge at ${viewport.width}px`);
+    if (p.scripts) fail(`privacy ${name}: runs ${p.scripts} script(s); it needs none`);
+    for (const l of await leftovers(page)) fail(`privacy ${name}: left ${l}`);
+    await page.screenshot({ path: join(out, `${name}-privacy.png`), fullPage: true });
+    await page.close();
+  }
+
+  // Usage events (lab#71). Analytics only sends on *.brightloopapps.com, so the hub is served under made-up
+  // hostnames: every request to one is answered by the local server, and PostHog's endpoint is answered here,
+  // so nothing reaches PostHog and the project cards open a stub. The browser also has to look like a
+  // person's, since posthog skips automated browsers.
+  if (local) {
+    const projects: { name: string; title: string; url: string }[] = await (await fetch(new URL("/data/projects.json", base))).json();
+    const known = projects.map((p) => p.name);
+    const projectHosts = projects.map((p) => new URL(p.url).hostname);
+    const probe = await browser.newPage();
+    const userAgent = (await probe.evaluate(() => navigator.userAgent)).replace("HeadlessChrome", "Chrome");
+    await probe.close();
+    const decode = (body: Buffer | null) => {
+      if (!body?.length) return [];
+      let text = body[0] === 0x1f ? gunzipSync(body).toString() : body.toString();
+      if (text.startsWith("data=")) text = Buffer.from(decodeURIComponent(text.slice(5)), "base64").toString();
+      const v = JSON.parse(text);
+      return Array.isArray(v) ? v : v.batch ?? [v];
+    };
+    // With `signals` (Do Not Track or Global Privacy Control), the hub mustn't even fetch the script; it's then
+    // added by hand as another project might, and must stay quiet too.
+    const run = async (label: string, host: string, { posthogUp = true, click = false, signals = undefined as Parameters<typeof privacySignals>[1] } = {}) => {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "dark", userAgent });
+      await ctx.addInitScript(() => {
+        Object.defineProperty(Navigator.prototype, "webdriver", { get: () => false });
+        Object.defineProperty(Navigator.prototype, "userAgentData", { get: () => undefined });
+      });
+      await privacySignals(ctx, signals);
+      const hosts = new Set<string>();
+      const events = [];
+      await ctx.route((u) => u.hostname === host, async (route) => {
+        const u = new URL(route.request().url());
+        await route.fulfill({ response: await route.fetch({ url: new URL(u.pathname + u.search, base).href }) });
+      });
+      await ctx.route((u) => projectHosts.includes(u.hostname), (route) => route.fulfill({ contentType: "text/html", body: "<!doctype html><title>stub</title>" }));
+      await ctx.route((u) => /(^|\.)posthog\.com$/.test(u.hostname), async (route) => {
+        const req = route.request();
+        if (new URL(req.url()).hostname !== "eu.i.posthog.com") { fail(`${label}: analytics contacted ${req.url()}`); return route.abort(); }
+        if (!posthogUp) return route.abort();
+        try { events.push(...decode(req.postDataBuffer()).map((e) => ({ ...e, by: req.resourceType() }))); } catch (e) { fail(`${label}: couldn't read what analytics sent to ${req.url()}: ${e.message}`); }
+        await route.fulfill({ status: 200, contentType: "application/json", body: '{"status":"Ok"}' });
+      });
+      const page = await ctx.newPage();
+      page.on("request", (r) => hosts.add(new URL(r.url()).hostname));
+      // A blocked request shows up as the browser's own network line; anything else is ours.
+      page.on("console", (m) => m.type() === "error" && !(!posthogUp && /Failed to load resource/.test(m.text())) && fail(`${label}: console error: ${m.text()}`));
+      page.on("pageerror", (e) => fail(`${label}: page error: ${e.message}`));
+      await page.goto(`https://${host}/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".card h3", { timeout: 5000 }).catch(() => fail(`${label}: no project cards`));
+      if (!signals) {
+        if (!(await waitForAnalytics(page).catch(() => null))) fail(`${label}: /analytics/v1.js never loaded`);
+      } else {
+        await page.waitForTimeout(3500); // past load.ts's idle timeout, when the script would have been added
+        if (await page.evaluate(() => performance.getEntriesByType("resource").some((e) => e.name.endsWith("/analytics/v1.js")))) fail(`${label}: the hub fetched /analytics/v1.js`);
+        await page.evaluate(async (known) => {
+          window.labAnalytics = { project: "hub", allow: { $pageview: {}, project_opened: { project: known } }, queue: [["project_opened", { project: known[0] }] as Queued] };
+          await new Promise((done) => document.head.append(Object.assign(document.createElement("script"), { src: "/analytics/v1.js", onload: done, onerror: done })));
+          window.labAnalytics.queue.push(["project_opened", { project: known[1] ?? known[0] }]);
+        }, known);
+      }
+      await page.waitForTimeout(1500); // posthog starts and sends the pageview
+      for (const l of await leftovers(page)) fail(`${label}: analytics left ${l}`);
+      let opened = null;
+      if (click) {
+        const card = page.locator(".card").first();
+        const title = await card.locator("h3").textContent();
+        opened = projects.find((p) => p.title === title)?.name;
+        // 14 quick clicks held back from navigating, then one that goes: still one project_opened.
+        await page.evaluate(() => {
+          const hold = (e: Event) => e.preventDefault();
+          addEventListener("click", hold);
+          for (let i = 0; i < 14; i++) document.querySelector<HTMLAnchorElement>(".card .btn.primary").click();
+          removeEventListener("click", hold);
+        });
+        await Promise.all([page.waitForURL((u) => projectHosts.includes(u.hostname)), card.locator(".btn.primary").click()]);
+        await page.waitForTimeout(1000);
+        for (const l of (await ctx.cookies()).map((c) => `cookie "${c.name}" on ${c.domain}`)) fail(`${label}: analytics left ${l}`);
+      }
+      const allowedHosts = new Set([host, ...(signals ? [] : ["eu.i.posthog.com"]), "fonts.googleapis.com", "fonts.gstatic.com", ...projectHosts]);
+      for (const h of hosts) if (!allowedHosts.has(h)) fail(`${label}: the page contacted ${h}`);
+      await ctx.close();
+      return { events, opened };
+    };
+
+    // Production: a pageview, then project_opened for the card followed, and nothing else.
+    const prod = await run("production", "lab.playtest.brightloopapps.com", { click: true });
+    const names = prod.events.map((e) => e.event);
+    if (names.join() !== "$pageview,project_opened") fail(`production: analytics sent [${names.join(", ")}], want [$pageview, project_opened]`);
+    for (const e of prod.events) {
+      const extra = Object.keys(e.properties ?? {}).filter((k) => !k.startsWith("$") && !["token", "distinct_id", "project"].includes(k));
+      if (extra.length) fail(`production: ${e.event} carried ${extra.join(", ")}`);
+      if (e.$set || e.$set_once || e.properties?.$set || e.properties?.$set_once) fail(`production: ${e.event} set person properties`);
+      if (e.properties?.$current_url && /[?#]/.test(e.properties.$current_url)) fail(`production: ${e.event} sent ${e.properties.$current_url}`);
+    }
+    const pv = prod.events.find((e) => e.event === "$pageview");
+    if (pv && pv.properties?.project !== "hub") fail(`production: $pageview project is ${pv.properties?.project}`);
+    const po = prod.events.find((e) => e.event === "project_opened");
+    if (po && (po.properties?.project !== prod.opened || !known.includes(po.properties?.project))) fail(`production: project_opened for ${po.properties?.project}, followed ${prod.opened}`);
+    if (prod.events[0] && prod.events[0].properties?.$cookieless_mode !== true) fail("production: events aren't marked cookieless");
+    if (po && po.by !== "ping") fail(`production: project_opened went by ${po.by}, not a beacon that outlives the page`);
+    console.log(`production: analytics sent ${names.join(", ")} (${prod.opened}, 15 clicks, ${po?.by}), no cookies or storage`);
+
+    // The visitor asked not to be tracked: nothing is sent, and PostHog is never contacted.
+    for (const [label, signals] of [["do not track", { dnt: "1" }], ["global privacy control", { gpc: true }]] as const) {
+      const quiet = await run(label, "lab.playtest.brightloopapps.com", { click: true, signals });
+      if (quiet.events.length) fail(`${label}: analytics sent ${quiet.events.map((e) => e.event).join(", ")}`);
+    }
+
+    // PostHog unreachable (an ad blocker, say): the page carries on and nothing shows.
+    await run("posthog blocked", "lab.playtest.brightloopapps.com", { posthogUp: false });
+    // A workers.dev preview: the script loads and sends nothing.
+    const preview = await run("workers.dev", "lab-hub.playtest.workers.dev", { click: true });
+    if (preview.events.length) fail(`workers.dev: analytics sent ${preview.events.map((e) => e.event).join(", ")}`);
+
+    // The script itself blocked: the hub still works and stays quiet.
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: "light" });
+    await privacySignals(page);
+    await page.route("**/analytics/v1.js", (route) => route.abort("blockedbyclient"));
+    page.on("console", (m) => m.type() === "error" && !/Failed to load resource/.test(m.text()) && fail(`script blocked: console error: ${m.text()}`));
+    page.on("pageerror", (e) => fail(`script blocked: page error: ${e.message}`));
+    await page.goto(base, { waitUntil: "networkidle" });
+    await page.waitForSelector(".card h3", { timeout: 5000 }).catch(() => fail("script blocked: no project cards"));
+    await page.waitForTimeout(1500);
+    // Following a card still works, and the event just waits in the queue (navigation is held back here).
+    const queued = await page.evaluate(() => {
+      addEventListener("click", (e) => e.preventDefault());
+      document.querySelector<HTMLAnchorElement>(".card a[data-open]")?.click();
+      const q = window.labAnalytics?.queue;
+      return Array.isArray(q) ? q.length : -1;
+    });
+    if (queued !== 1) fail(`script blocked: following a card queued ${queued} events, want 1`);
+    await page.close();
+    console.log("analytics: no-op on localhost, workers.dev and with Do Not Track or GPC, harmless when blocked");
   }
 } finally {
   await browser.close();

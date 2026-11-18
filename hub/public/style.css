@@ -169,6 +169,11 @@ main { padding-top: 76px; } /* room for the fixed header */
   .nav__ghost .nav__cta { display: none; }
   .nav__links a { padding-inline: 12px; }
 }
+@media (max-width: 360px) {
+  /* The wordmark and the suggest link side by side need about 320px at full size: a little smaller fits 320px screens. */
+  .wordmark { font-size: 1rem; }
+  .nav__cta { font-size: 0.9rem; }
+}
 @media (prefers-reduced-motion: reduce) {
   .nav, .nav__inner, .wordmark__text, .nav__glow, .nav__cta { transition: none !important; }
 }
@@ -259,3 +264,16 @@ button[disabled] { opacity: 0.6; cursor: progress; }
 .status.bad { color: var(--bad); }
 
 .foot { color: var(--ink-dim); font-size: 0.92rem; padding: 24px 0 40px; border-top: 1px solid var(--line); }
+
+/* ── Privacy note (privacy.html): no script, so the header stays put instead of folding into a pill. */
+.nav--static { position: absolute; }
+.note { padding-bottom: clamp(32px, 6vw, 56px); }
+.note > * { max-width: 720px; }
+.note h1 { font: 800 clamp(2.4rem, 7vw, 3.6rem)/1 var(--display); letter-spacing: -0.03em; margin: clamp(32px, 7vw, 72px) 0 18px; }
+.note .lede { margin-bottom: clamp(32px, 6vw, 48px); }
+.note section { margin-bottom: clamp(28px, 5vw, 40px); }
+.note h2 { font-size: 1.3rem; margin-bottom: 12px; }
+.note ul { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; }
+.note li::marker { color: var(--dawn); }
+.note p { margin: 0; }
+.note ul + p { margin-top: 14px; color: var(--ink-dim); }
