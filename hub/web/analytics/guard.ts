@@ -4,7 +4,8 @@
 // The lab-wide convention, so every project's numbers line up:
 //   - every page sends `$pageview`;
 //   - a project with a play loop sends `play_started` and `play_finished` (plus its own named events);
-//   - the hub sends `project_opened {project}` when a visitor follows a project's card;
+//   - the hub sends `project_opened {project}` when a visitor follows a project's card, at most once per
+//     project per page load, by beacon so it outlives the page it leaves;
 //   - every event carries `project`: the project it's about. That's the page's own project, unless the
 //     event lists `project` itself (the hub's `project_opened`), in which case it must be a known name.
 // Properties are enum-like values or bucketed numbers (`bucket()` below), never free text, and never
@@ -25,12 +26,21 @@ export type Client = {
   capture(name: string, props?: Props, options?: CaptureOptions): unknown;
 };
 
-declare global { interface Window { labAnalytics?: Config } }
+declare global {
+  interface Window { labAnalytics?: Config; doNotTrack?: string | null } // window.doNotTrack: older Safari and Edge
+  interface Navigator { globalPrivacyControl?: boolean }
+}
 
 const own = <T extends object>(o: T, k: string): k is Extract<keyof T, string> => Object.hasOwn(o, k);
 
 /** Lab pages in production. Everything else (localhost, *.workers.dev previews, tests, playtests) sends nothing. */
 export const isProduction = (hostname: string) => hostname.endsWith(".brightloopapps.com");
+
+/** The parts of `navigator` and `window` that say whether a visitor asked sites not to track them. */
+export type Signals = { nav: { doNotTrack?: string | null; globalPrivacyControl?: boolean }; win: { doNotTrack?: string | null } };
+/** Do Not Track (either spelling) or Global Privacy Control is on. The privacy note promises nothing is sent then. */
+export const optedOut = (nav: Signals["nav"], win: Signals["win"]) =>
+  nav.doNotTrack === "1" || nav.doNotTrack === "yes" || win.doNotTrack === "1" || nav.globalPrivacyControl === true;
 
 /** The properties an event may carry, with `project` attached, or null when the event may not be sent. */
 export function allowed(allow: AllowList, project: string, event: string, props: Props = {}): Props | null {
@@ -84,7 +94,7 @@ export const options = (allow: AllowList, project: string): Partial<PostHogConfi
   persistence: "memory",
   disable_persistence: true,
   person_profiles: "never",
-  respect_dnt: true,
+  respect_dnt: true, // has no effect in cookieless_mode "always": start() checks optedOut() before posthog starts
   autocapture: false,
   capture_pageview: false, // sent by start(), through the allow-list
   capture_pageleave: false,
@@ -105,18 +115,25 @@ export const options = (allow: AllowList, project: string): Partial<PostHogConfi
 });
 
 /**
- * Starts analytics for the page's config: in production with a key, posthog starts, sends `$pageview`,
- * then everything queued, and every later `queue.push` goes straight through. Otherwise the queue is
- * emptied and stays empty. Returns whether anything can be sent. Never throws.
+ * Starts analytics for the page's config: in production with a key, unless the visitor asked not to be
+ * tracked, posthog starts, sends `$pageview`, then everything queued, and every later `queue.push` goes
+ * straight through. Otherwise posthog never starts, and the queue is emptied and stays empty.
+ * Returns whether anything can be sent. Never throws.
  */
-export function start({ key, hostname, config, client }: { key: string; hostname: string; config: Config | undefined; client: Client }): boolean {
+export function start({ key, hostname, config, client, nav, win }: { key: string; hostname: string; config: Config | undefined; client: Client } & Signals): boolean {
   if (!config) return false;
   const queued = Array.isArray(config.queue) ? config.queue.splice(0) as Queued[] : [];
   const drop = () => { config.queue = { push: () => 0 }; return false; };
-  if (!key || !isProduction(hostname)) return drop();
+  if (!key || !isProduction(hostname) || optedOut(nav, win)) return drop();
+  const opened = new Set<unknown>();
   const send = ([name, props]: Queued) => {
     const p = allowed(config.allow, config.project, name, props);
-    if (p) try { client.capture(name, p, { send_instantly: true }); } catch {}
+    if (!p) return;
+    // Sent as the page navigates away, so by beacon, and only the first time per project.
+    const leaving = name === "project_opened";
+    if (leaving && opened.has(p.project)) return;
+    if (leaving) opened.add(p.project);
+    try { client.capture(name, p, leaving ? { send_instantly: true, transport: "sendBeacon" } : { send_instantly: true }); } catch {}
   };
   try {
     client.init(key, options(config.allow, config.project));

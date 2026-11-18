@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { allowed, bucket, cleanEvent, isProduction, options, start, type AllowList, type Client, type Config } from "../web/analytics/guard.ts";
+import { allowed, bucket, cleanEvent, isProduction, optedOut, options, start, type AllowList, type Client, type Config } from "../web/analytics/guard.ts";
 import { PROJECT, EVENTS } from "../web/analytics-events.ts";
 import projects from "../projects.json" with { type: "json" };
 
@@ -10,17 +10,19 @@ const ALLOW = {
   puzzle_solved: { day: [1, 2, 3], moves_bucket: ["1-9", "10+"] },
 } satisfies AllowList;
 
-// A stand-in for posthog: records what it was asked to do, sends nothing.
+// A stand-in for posthog: records what it was asked to do (and how: `sent` holds each capture's options), sends nothing.
 function fakeClient() {
-  const calls: { inits: { key: string; opts: Record<string, unknown> }[]; captured: [string, Record<string, unknown>][] } = { inits: [], captured: [] };
+  const calls: { inits: { key: string; opts: Record<string, unknown> }[]; captured: [string, Record<string, unknown>][]; sent: Record<string, unknown>[] } = { inits: [], captured: [], sent: [] };
   const client: Client = {
     init(key, opts) { calls.inits.push({ key, opts: opts as Record<string, unknown> }); },
-    capture(name, props) { calls.captured.push([name, props ?? {}]); },
+    capture(name, props, opts) { calls.captured.push([name, props ?? {}]); calls.sent.push({ ...opts }); },
   };
   return { client, calls };
 }
 const config = (): Config => ({ project: "afterstep", allow: ALLOW, queue: [] });
 const KEY = "phc_test";
+// A browser that hasn't asked sites not to track it (`navigator`, `window`).
+const tracking = { nav: {}, win: {} };
 
 test("only lab subdomains in production send", () => {
   for (const h of ["lab.brightloopapps.com", "afterstep.brightloopapps.com"]) assert.equal(isProduction(h), true, h);
@@ -94,7 +96,6 @@ test("posthog runs cookieless in the EU with everything but named events off", (
   assert.equal(o.cookieless_mode, "always");
   assert.equal(o.persistence, "memory");
   assert.equal(o.disable_persistence, true);
-  assert.equal(o.respect_dnt, true);
   assert.equal(o.person_profiles, "never");
   for (const off of ["autocapture", "capture_pageview", "capture_pageleave", "capture_heatmaps", "capture_dead_clicks", "capture_exceptions", "capture_performance", "rageclick", "save_campaign_params"]) {
     assert.equal(o[off], false, off);
@@ -109,7 +110,7 @@ test("in production it sends a pageview, queued events and later events, all thr
   const { client, calls } = fakeClient();
   const c = config();
   c.queue.push(["puzzle_solved", { day: 1, moves_bucket: "10+", name: "Erik" }], ["level_failed", {}]);
-  assert.equal(start({ key: KEY, hostname: "afterstep.brightloopapps.com", config: c, client }), true);
+  assert.equal(start({ key: KEY, hostname: "afterstep.brightloopapps.com", config: c, client, ...tracking }), true);
   assert.equal(calls.inits.length, 1);
   assert.equal(calls.inits[0]!.key, KEY);
   c.queue.push(["project_opened", { project: "inkchime" }], ["$autocapture", {}]);
@@ -125,19 +126,65 @@ test("sends nothing without a key, off production, or without a page config", ()
     const { client, calls } = fakeClient();
     const c = config();
     c.queue.push(["$pageview", {}]);
-    assert.equal(start({ key: key!, hostname: hostname!, config: c, client }), false);
+    assert.equal(start({ key: key!, hostname: hostname!, config: c, client, ...tracking }), false);
     c.queue.push(["$pageview", {}]);
-    assert.deepEqual(calls, { inits: [], captured: [] }, `${key || "no key"} on ${hostname}`);
+    assert.deepEqual(calls, { inits: [], captured: [], sent: [] }, `${key || "no key"} on ${hostname}`);
     assert.equal(Array.from(c.queue as unknown as unknown[]).length, 0, "the queue doesn't grow");
   }
   const { client, calls } = fakeClient();
-  assert.equal(start({ key: KEY, hostname: "lab.brightloopapps.com", config: undefined, client }), false);
-  assert.deepEqual(calls, { inits: [], captured: [] });
+  assert.equal(start({ key: KEY, hostname: "lab.brightloopapps.com", config: undefined, client, ...tracking }), false);
+  assert.deepEqual(calls, { inits: [], captured: [], sent: [] });
+});
+
+// posthog's respect_dnt does nothing in cookieless_mode "always", so start() checks the browser itself.
+test("knows when a browser asks not to be tracked: Do Not Track or Global Privacy Control", () => {
+  for (const [nav, win] of [
+    [{ doNotTrack: "1" }, {}], [{ doNotTrack: "yes" }, {}], [{}, { doNotTrack: "1" }],
+    [{ globalPrivacyControl: true }, {}], [{ doNotTrack: "0", globalPrivacyControl: true }, {}],
+  ] as const) assert.equal(optedOut(nav, win), true, JSON.stringify([nav, win]));
+  for (const [nav, win] of [
+    [{}, {}], [{ doNotTrack: "0" }, {}], [{ doNotTrack: "unspecified" }, {}], [{ doNotTrack: null }, { doNotTrack: null }],
+    [{ globalPrivacyControl: false }, {}],
+  ] as const) assert.equal(optedOut(nav, win), false, JSON.stringify([nav, win]));
+});
+
+test("with Do Not Track or Global Privacy Control on, posthog never starts and every event is dropped quietly", () => {
+  for (const signals of [
+    { nav: { doNotTrack: "1" }, win: {} }, { nav: { doNotTrack: "yes" }, win: {} },
+    { nav: {}, win: { doNotTrack: "1" } }, { nav: { globalPrivacyControl: true }, win: {} },
+  ]) {
+    const { client, calls } = fakeClient();
+    const c = config();
+    c.queue.push(["puzzle_solved", { day: 1, moves_bucket: "10+" }]);
+    assert.equal(start({ key: KEY, hostname: "afterstep.brightloopapps.com", config: c, client, ...signals }), false);
+    c.queue.push(["project_opened", { project: "inkchime" }], ["$pageview", {}]);
+    assert.deepEqual(calls, { inits: [], captured: [], sent: [] }, JSON.stringify(signals));
+    assert.equal(Array.from(c.queue as unknown as unknown[]).length, 0, "the queue doesn't grow");
+  }
+});
+
+test("project_opened goes once per project per page load, by beacon so it outlives the page", () => {
+  const { client, calls } = fakeClient();
+  const c = config();
+  c.queue.push(["project_opened", { project: "inkchime" }], ["project_opened", { project: "inkchime" }]);
+  start({ key: KEY, hostname: "lab.brightloopapps.com", config: c, client, ...tracking });
+  for (let i = 0; i < 15; i++) c.queue.push(["project_opened", { project: "inkchime" }]);
+  c.queue.push(["project_opened", { project: "evil" }], ["project_opened", { project: "afterstep" }], ["project_opened", { project: "afterstep" }]);
+  c.queue.push(["puzzle_solved", { day: 1 }], ["puzzle_solved", { day: 1 }]); // other events may repeat
+  assert.deepEqual(calls.captured.map(([n, p]) => `${n} ${p.project}${p.day ?? ""}`),
+    ["$pageview afterstep", "project_opened inkchime", "project_opened afterstep", "puzzle_solved afterstep1", "puzzle_solved afterstep1"]);
+  assert.deepEqual(calls.sent, [
+    { send_instantly: true },
+    { send_instantly: true, transport: "sendBeacon" },
+    { send_instantly: true, transport: "sendBeacon" },
+    { send_instantly: true },
+    { send_instantly: true },
+  ]);
 });
 
 test("a client that throws breaks nothing", () => {
   const client: Client = { init() { throw new Error("blocked"); }, capture() { throw new Error("blocked"); } };
-  assert.equal(start({ key: KEY, hostname: "lab.brightloopapps.com", config: config(), client }), false);
+  assert.equal(start({ key: KEY, hostname: "lab.brightloopapps.com", config: config(), client, ...tracking }), false);
 });
 
 test("the hub may send only $pageview and project_opened for a known project", () => {

@@ -12,5 +12,5 @@ import { start } from "./guard.ts";
 declare const POSTHOG_KEY: string; // nightshift/config.json → posthog.projectKey, set at build time; "" sends nothing
 
 try {
-  start({ key: POSTHOG_KEY, hostname: location.hostname, config: window.labAnalytics, client: posthog });
+  start({ key: POSTHOG_KEY, hostname: location.hostname, config: window.labAnalytics, client: posthog, nav: navigator, win: window });
 } catch {}

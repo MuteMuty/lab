@@ -4,10 +4,10 @@
 // suggestion limit and nothing "already liked".
 // Against localhost it also checks the privacy note and usage events (lab#71): see the end of the run.
 // Env: PLAYTEST_BROWSER, PLAYTEST_OUT.
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import { mkdirSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
-import type {} from "../web/analytics/guard.ts"; // window.labAnalytics
+import type { Queued } from "../web/analytics/guard.ts"; // and window.labAnalytics
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -76,12 +76,20 @@ const analyticsTiming = (page) => page.evaluate(() => {
   return { loaded: nav?.loadEventEnd ?? 0, started: s ? s.startTime : null };
 });
 const waitForAnalytics = (page) => page.waitForFunction(() => performance.getEntriesByType("resource").some((e) => e.name.endsWith("/analytics/v1.js")), null, { timeout: 8000 });
+// Whether the browser asks sites not to track it. Brave sends Global Privacy Control by default, so every check
+// that loads the hub sets both signals to what it means to test: by default, neither.
+const privacySignals = (target: { addInitScript: Page["addInitScript"] }, { dnt = null, gpc = false }: { dnt?: string | null; gpc?: boolean } = {}) =>
+  target.addInitScript(([dnt, gpc]) => {
+    Object.defineProperty(Navigator.prototype, "doNotTrack", { get: () => dnt, configurable: true });
+    Object.defineProperty(Navigator.prototype, "globalPrivacyControl", { get: () => gpc, configurable: true });
+  }, [dnt, gpc] as const);
 
 let likesSeen = false;
 const browser = await chromium.launch({ executablePath: process.env.PLAYTEST_BROWSER || "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" });
 try {
   for (const [name, viewport, colorScheme] of [["desktop-dark", { width: 1280, height: 900 }, "dark"], ["phone-light", { width: 390, height: 844 }, "light"]] as const) {
     const page = await browser.newPage({ viewport, colorScheme });
+    await privacySignals(page);
     page.on("console", (m) => m.type() === "error" && !/status of 429/.test(m.text()) && fail(`${name}: console error: ${m.text()}`));
     page.on("pageerror", (e) => fail(`${name}: page error: ${e.message}`));
     page.on("request", (r) => isPosthog(r.url()) && fail(`${name}: analytics contacted ${r.url()} from ${base}`));
@@ -264,6 +272,7 @@ try {
   for (const [name, viewport, colorScheme] of [
     ["desktop-dark", { width: 1280, height: 900 }, "dark"], ["desktop-light", { width: 1280, height: 900 }, "light"],
     ["phone-dark", { width: 390, height: 844 }, "dark"], ["phone-light", { width: 390, height: 844 }, "light"],
+    ["small-phone-light", { width: 320, height: 640 }, "light"],
   ] as const) {
     const page = await browser.newPage({ viewport, colorScheme });
     page.on("console", (m) => m.type() === "error" && fail(`privacy ${name}: console error: ${m.text()}`));
@@ -281,10 +290,11 @@ try {
       font: getComputedStyle(document.querySelector("h1")).fontFamily,
       bg: getComputedStyle(document.body).backgroundImage !== "none",
       overflowX: document.documentElement.scrollWidth > innerWidth + 1,
+      clipped: [...document.querySelectorAll(".nav .wordmark, .nav .nav__cta")].filter((e) => e.getBoundingClientRect().right > innerWidth).map((e) => e.textContent.trim()),
       scripts: document.scripts.length,
     }));
     if (p.h1 !== "Privacy") fail(`privacy ${name}: heading is "${p.h1}"`);
-    for (const must of ["Likes", "Page views", "Projects opened", "No cookies", "EU", "IP address", "Anything you type, draw, record or upload"]) {
+    for (const must of ["Likes", "Page views", "Projects opened", "front page", "No cookies", "EU", "IP address", "Do Not Track", "Global Privacy Control", "Anything you type, draw, record or upload"]) {
       if (!p.text.includes(must)) fail(`privacy ${name}: doesn't mention "${must}"`);
     }
     if (!p.foot?.startsWith("Made by Erik Pahor at BrightLoop Lab") || p.erik !== "Erik Pahor" || !p.privacy) fail(`privacy ${name}: footer is "${p.foot}"`);
@@ -292,6 +302,7 @@ try {
     if (!p.font.includes("Bricolage")) fail(`privacy ${name}: heading font is ${p.font}`);
     if (!p.bg) fail(`privacy ${name}: page background missing`);
     if (p.overflowX) fail(`privacy ${name}: horizontal scroll at ${viewport.width}px`);
+    for (const c of p.clipped) fail(`privacy ${name}: "${c}" runs past the edge at ${viewport.width}px`);
     if (p.scripts) fail(`privacy ${name}: runs ${p.scripts} script(s); it needs none`);
     for (const l of await leftovers(page)) fail(`privacy ${name}: left ${l}`);
     await page.screenshot({ path: join(out, `${name}-privacy.png`), fullPage: true });
@@ -316,12 +327,15 @@ try {
       const v = JSON.parse(text);
       return Array.isArray(v) ? v : v.batch ?? [v];
     };
-    const run = async (label: string, host: string, { posthogUp = true, click = false } = {}) => {
+    // With `signals` (Do Not Track or Global Privacy Control), the hub mustn't even fetch the script; it's then
+    // added by hand as another project might, and must stay quiet too.
+    const run = async (label: string, host: string, { posthogUp = true, click = false, signals = undefined as Parameters<typeof privacySignals>[1] } = {}) => {
       const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "dark", userAgent });
       await ctx.addInitScript(() => {
         Object.defineProperty(Navigator.prototype, "webdriver", { get: () => false });
         Object.defineProperty(Navigator.prototype, "userAgentData", { get: () => undefined });
       });
+      await privacySignals(ctx, signals);
       const hosts = new Set<string>();
       const events = [];
       await ctx.route((u) => u.hostname === host, async (route) => {
@@ -333,7 +347,7 @@ try {
         const req = route.request();
         if (new URL(req.url()).hostname !== "eu.i.posthog.com") { fail(`${label}: analytics contacted ${req.url()}`); return route.abort(); }
         if (!posthogUp) return route.abort();
-        try { events.push(...decode(req.postDataBuffer())); } catch (e) { fail(`${label}: couldn't read what analytics sent to ${req.url()}: ${e.message}`); }
+        try { events.push(...decode(req.postDataBuffer()).map((e) => ({ ...e, by: req.resourceType() }))); } catch (e) { fail(`${label}: couldn't read what analytics sent to ${req.url()}: ${e.message}`); }
         await route.fulfill({ status: 200, contentType: "application/json", body: '{"status":"Ok"}' });
       });
       const page = await ctx.newPage();
@@ -343,7 +357,17 @@ try {
       page.on("pageerror", (e) => fail(`${label}: page error: ${e.message}`));
       await page.goto(`https://${host}/`, { waitUntil: "networkidle" });
       await page.waitForSelector(".card h3", { timeout: 5000 }).catch(() => fail(`${label}: no project cards`));
-      if (!(await waitForAnalytics(page).catch(() => null))) fail(`${label}: /analytics/v1.js never loaded`);
+      if (!signals) {
+        if (!(await waitForAnalytics(page).catch(() => null))) fail(`${label}: /analytics/v1.js never loaded`);
+      } else {
+        await page.waitForTimeout(3500); // past load.ts's idle timeout, when the script would have been added
+        if (await page.evaluate(() => performance.getEntriesByType("resource").some((e) => e.name.endsWith("/analytics/v1.js")))) fail(`${label}: the hub fetched /analytics/v1.js`);
+        await page.evaluate(async (known) => {
+          window.labAnalytics = { project: "hub", allow: { $pageview: {}, project_opened: { project: known } }, queue: [["project_opened", { project: known[0] }] as Queued] };
+          await new Promise((done) => document.head.append(Object.assign(document.createElement("script"), { src: "/analytics/v1.js", onload: done, onerror: done })));
+          window.labAnalytics.queue.push(["project_opened", { project: known[1] ?? known[0] }]);
+        }, known);
+      }
       await page.waitForTimeout(1500); // posthog starts and sends the pageview
       for (const l of await leftovers(page)) fail(`${label}: analytics left ${l}`);
       let opened = null;
@@ -351,11 +375,18 @@ try {
         const card = page.locator(".card").first();
         const title = await card.locator("h3").textContent();
         opened = projects.find((p) => p.title === title)?.name;
+        // 14 quick clicks held back from navigating, then one that goes: still one project_opened.
+        await page.evaluate(() => {
+          const hold = (e: Event) => e.preventDefault();
+          addEventListener("click", hold);
+          for (let i = 0; i < 14; i++) document.querySelector<HTMLAnchorElement>(".card .btn.primary").click();
+          removeEventListener("click", hold);
+        });
         await Promise.all([page.waitForURL((u) => projectHosts.includes(u.hostname)), card.locator(".btn.primary").click()]);
         await page.waitForTimeout(1000);
         for (const l of (await ctx.cookies()).map((c) => `cookie "${c.name}" on ${c.domain}`)) fail(`${label}: analytics left ${l}`);
       }
-      const allowedHosts = new Set([host, "eu.i.posthog.com", "fonts.googleapis.com", "fonts.gstatic.com", ...projectHosts]);
+      const allowedHosts = new Set([host, ...(signals ? [] : ["eu.i.posthog.com"]), "fonts.googleapis.com", "fonts.gstatic.com", ...projectHosts]);
       for (const h of hosts) if (!allowedHosts.has(h)) fail(`${label}: the page contacted ${h}`);
       await ctx.close();
       return { events, opened };
@@ -376,7 +407,14 @@ try {
     const po = prod.events.find((e) => e.event === "project_opened");
     if (po && (po.properties?.project !== prod.opened || !known.includes(po.properties?.project))) fail(`production: project_opened for ${po.properties?.project}, followed ${prod.opened}`);
     if (prod.events[0] && prod.events[0].properties?.$cookieless_mode !== true) fail("production: events aren't marked cookieless");
-    console.log(`production: analytics sent ${names.join(", ")} (${prod.opened}), no cookies or storage`);
+    if (po && po.by !== "ping") fail(`production: project_opened went by ${po.by}, not a beacon that outlives the page`);
+    console.log(`production: analytics sent ${names.join(", ")} (${prod.opened}, 15 clicks, ${po?.by}), no cookies or storage`);
+
+    // The visitor asked not to be tracked: nothing is sent, and PostHog is never contacted.
+    for (const [label, signals] of [["do not track", { dnt: "1" }], ["global privacy control", { gpc: true }]] as const) {
+      const quiet = await run(label, "lab.playtest.brightloopapps.com", { click: true, signals });
+      if (quiet.events.length) fail(`${label}: analytics sent ${quiet.events.map((e) => e.event).join(", ")}`);
+    }
 
     // PostHog unreachable (an ad blocker, say): the page carries on and nothing shows.
     await run("posthog blocked", "lab.playtest.brightloopapps.com", { posthogUp: false });
@@ -386,6 +424,7 @@ try {
 
     // The script itself blocked: the hub still works and stays quiet.
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: "light" });
+    await privacySignals(page);
     await page.route("**/analytics/v1.js", (route) => route.abort("blockedbyclient"));
     page.on("console", (m) => m.type() === "error" && !/Failed to load resource/.test(m.text()) && fail(`script blocked: console error: ${m.text()}`));
     page.on("pageerror", (e) => fail(`script blocked: page error: ${e.message}`));
@@ -401,7 +440,7 @@ try {
     });
     if (queued !== 1) fail(`script blocked: following a card queued ${queued} events, want 1`);
     await page.close();
-    console.log("analytics: no-op on localhost and workers.dev, harmless when blocked");
+    console.log("analytics: no-op on localhost, workers.dev and with Do Not Track or GPC, harmless when blocked");
   }
 } finally {
   await browser.close();

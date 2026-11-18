@@ -169,6 +169,11 @@ main { padding-top: 76px; } /* room for the fixed header */
   .nav__ghost .nav__cta { display: none; }
   .nav__links a { padding-inline: 12px; }
 }
+@media (max-width: 360px) {
+  /* The wordmark and the suggest link side by side need about 320px at full size: a little smaller fits 320px screens. */
+  .wordmark { font-size: 1rem; }
+  .nav__cta { font-size: 0.9rem; }
+}
 @media (prefers-reduced-motion: reduce) {
   .nav, .nav__inner, .wordmark__text, .nav__glow, .nav__cta { transition: none !important; }
 }
