@@ -386,7 +386,7 @@ try {
         await page.waitForTimeout(1000);
         for (const l of (await ctx.cookies()).map((c) => `cookie "${c.name}" on ${c.domain}`)) fail(`${label}: analytics left ${l}`);
       }
-      const allowedHosts = new Set([host, ...(signals ? [] : ["eu.i.posthog.com"]), "fonts.googleapis.com", "fonts.gstatic.com", ...projectHosts]);
+      const allowedHosts = new Set([host, ...(signals ? [] : ["eu.i.posthog.com"]), ...projectHosts]);
       for (const h of hosts) if (!allowedHosts.has(h)) fail(`${label}: the page contacted ${h}`);
       await ctx.close();
       return { events, opened };

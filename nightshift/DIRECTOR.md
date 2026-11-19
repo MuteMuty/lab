@@ -159,6 +159,7 @@ A scout can run in one lane while a builder works in the other. To run one:
    - a playable core;
    - TypeScript throughout (tests and playtest too), with no JavaScript files of its own;
    - a README in Afterstep's style;
+   - share tags in `index.html` for the launch URL: `og:title`, `og:description`, `og:url`, `og:type`, `og:image` (a self-hosted 1200 × 630 PNG), `link rel="canonical"` and `twitter:card` = `summary_large_image` (lab#74);
    - the standard footer from SAFETY.md ("Made by Erik Pahor at BrightLoop Lab"), followed by a "Privacy" link to `https://lab.brightloopapps.com/privacy`;
    - usage events from day one (lab#71): load the hub's shared `https://lab.brightloopapps.com/analytics/v1.js` the way Afterstep does, plus an allow-list file with `$pageview` and `play_started` / `play_finished` (the convention in `lab/hub/web/analytics/guard.ts`). It sends nothing on the `*.workers.dev` preview, so the project counts from launch. At launch, a companion lab PR adds the project's events to `hub/public/privacy.html`, merged before the launch deploy;
    - a like button from day one: the heart backed by the hub's `/api/likes`, as Afterstep and Inkchime have it. It stays hidden until the count loads, hides quietly if the API fails or is slow, and the game never waits for it. Its tests and playtest mock the API, never the live one. The hub counts likes for unlaunched lab projects too, so it works on the preview.
@@ -167,7 +168,7 @@ A scout can run in one lane while a builder works in the other. To run one:
 **Launch** happens only when a full playtest passes and the result is something Erik would be proud to link:
 1. `gh repo edit MuteMuty/<name> --visibility public --accept-visibility-change-consequences`.
 2. Add the route `{ "pattern": "<name>.brightloopapps.com", "custom_domain": true }`. `deploy.ts` refuses any other route. If the Worker's name differs from the subdomain, set `"subdomain"` in `projects.json`.
-3. Deploy, set `"public": true`, and add it to `lab/hub/projects.json` with a preview image.
+3. Deploy, set `"public": true`, and add it to `lab/hub/projects.json` with a preview image and to the Projects table in `lab/README.md`.
 4. Redeploy the hub.
 
 ## 5. Build each task

@@ -1,3 +1,11 @@
+/* Bricolage Grotesque (SIL OFL 1.1, see fonts/BricolageGrotesque-OFL.txt), served from this domain. */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/BricolageGrotesque-var.woff2") format("woff2");
+  font-weight: 500 800;
+  font-display: swap;
+}
+
 /* BrightLoop Lab: dusk to dawn. The lab works at night; the page is the view at first light. */
 :root {
   --bg: #1c1733;
