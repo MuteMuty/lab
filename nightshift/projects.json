@@ -37,5 +37,12 @@
     "path": "rallyform",
     "worker": "rallyform",
     "public": false
+  },
+  {
+    "name": "sayfold",
+    "repo": "MuteMuty/sayfold",
+    "path": "sayfold",
+    "worker": "sayfold",
+    "public": false
   }
 ]
