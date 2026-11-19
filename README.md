@@ -6,7 +6,7 @@ Small, original things to click, play and poke at. Made by [Erik Pahor](https://
 
 ## How it works
 
-The lab builds itself. Every night from 02:00 to 06:00, the [night shift](nightshift/) runs on my Mac:
+The lab builds itself. On the nights it runs (02:00 to 06:00, on my Mac), the [night shift](nightshift/) works like this:
 
 1. **A director agent** checks that every live site is healthy, does the chores, and picks the next tasks from [the queue](#the-queue).
 2. **A builder agent** implements each task and opens a pull request with tests.
@@ -14,13 +14,14 @@ The lab builds itself. Every night from 02:00 to 06:00, the [night shift](nights
 4. **Only a pass ships.** The PR is merged and deployed, a live smoke test runs, and a failed check rolls back automatically.
 5. **Scout agents** explore the live sites and file what they find, so there's always good work queued.
 
-[A command guard](nightshift/bin/guard.mjs) checks every shell command against [the safety rules](nightshift/SAFETY.md). Every night leaves [a log](nightshift/logs/) and a morning report. On days I don't need the agents, the same loop runs as a day shift.
+[A command guard](nightshift/bin/guard.mjs) checks every shell command against [the safety rules](nightshift/SAFETY.md). Every run leaves [a log](nightshift/logs/) and a morning report. On days I don't need the agents, the same loop runs as a day shift.
 
 ## Projects
 
 | Project | What it is | Live |
 |---|---|---|
 | [Afterstep](https://github.com/MuteMuty/afterstep) | A daily puzzle where your past self holds the doors. Rust + WebAssembly. | [play](https://afterstep.brightloopapps.com) |
+| [Inkchime](https://github.com/MuteMuty/inkchime) | Draw lines, hear music. TypeScript, Web Audio, Canvas. | [play](https://inkchime.brightloopapps.com) |
 
 ## The queue
 

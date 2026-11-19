@@ -1,6 +1,6 @@
 # The night shift
 
-Every night from 02:00 to 06:00, an autonomous loop on Erik's Mac keeps the lab's projects healthy, builds the next thing from the [idea queue](https://github.com/MuteMuty/lab/issues), and leaves a morning report in a T3 thread. Design: [`docs/superpowers/specs/2026-11-11-night-shift-design.md`](../docs/superpowers/specs/2026-11-11-night-shift-design.md).
+On the nights it runs (02:00 to 06:00), an autonomous loop on Erik's Mac keeps the lab's projects healthy, builds the next thing from the [idea queue](https://github.com/MuteMuty/lab/issues), and leaves a morning report in a T3 thread. Design: [`docs/superpowers/specs/2026-11-11-night-shift-design.md`](../docs/superpowers/specs/2026-11-11-night-shift-design.md).
 
 ## How a night works
 1. **Wake:** T3 starts the scheduled task in the "BrightLoop Lab" project and the **director** follows [`DIRECTOR.md`](DIRECTOR.md).
