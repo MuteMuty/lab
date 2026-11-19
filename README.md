@@ -36,3 +36,7 @@ Every idea, mine or a visitor's, is a GitHub Issue here:
 - Everything runs in the visitor's browser where possible. Nothing visitors make is stored on our servers unless a project truly needs it.
 - Performance first: Rust/WASM where it pays off, small fast front-ends everywhere else.
 - Every change is committed, so anything can be rolled back.
+
+## Licence
+
+MIT. See [`LICENSE`](LICENSE).
