@@ -24,7 +24,7 @@ You are a **scout** on BrightLoop Lab's night shift. You explore one live projec
 - **Concrete and checkable.** "The Share toast hides the Undo button on phones", not "improve sharing".
 - **Fits in one night:** one builder, about an hour, plus a playtest.
 - **Worth doing:** fixes something broken or confusing, or adds a small touch that makes the project more delightful to show off. Rank by how much a visitor would notice.
-- **Original and in the house rules:** no tracking beyond SAFETY.md's "Usage events" rules (lab#71), nothing that stores what visitors make, no copied assets.
+- **Original and in the house rules:** no tracking beyond SAFETY.md's "Usage events" rules (lab#71), nothing that goes beyond SAFETY.md's "Lab defaults" (accounts, ads, keeping what visitors make), no copied assets.
 
 ## Report (your final message)
 Return at most 6 findings, most valuable first, as a JSON array and nothing else after it:
