@@ -34,7 +34,7 @@ Every idea, mine or a visitor's, is a GitHub Issue here:
 
 ## House rules
 
-- Everything runs in the visitor's browser where possible. Nothing visitors make is stored on our servers unless a project truly needs it.
+- No accounts, no ads, and everything runs in the visitor's browser where possible. A project that needs more, such as a server that turns speech into text, says plainly on its page what it sends and what it keeps, and the [privacy note](https://lab.brightloopapps.com/privacy) lists it.
 - Performance first: Rust/WASM where it pays off, small fast front-ends everywhere else.
 - Every change is committed, so anything can be rolled back.
 
