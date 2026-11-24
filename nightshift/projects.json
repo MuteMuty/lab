@@ -43,6 +43,6 @@
     "repo": "MuteMuty/sayfold",
     "path": "sayfold",
     "worker": "sayfold",
-    "public": false
+    "public": true
   }
 ]
