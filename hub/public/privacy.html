@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Privacy at BrightLoop Lab</title>
-    <meta name="description" content="What BrightLoop Lab counts, how, and what it never sends. No cookies, hosted in the EU." />
+    <meta name="description" content="What BrightLoop Lab counts, how, what Sayfold's live text sends to be turned into text, and what is never sent. No cookies, hosted in the EU." />
     <meta name="theme-color" content="#1c1733" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#f5f1f8" media="(prefers-color-scheme: light)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -20,7 +20,7 @@
           <span class="wordmark__text">BrightLoop Lab</span>
         </a>
         <nav class="nav__links" aria-label="Sections">
-          <a href="/#play">Play</a>
+          <a href="/#play">Projects</a>
           <a href="/#log">Night log</a>
         </nav>
         <a class="nav__cta" href="/#suggest">Suggest an idea</a>
@@ -34,13 +34,17 @@
       <section aria-labelledby="counted">
         <h2 id="counted">What's counted</h2>
         <ul>
-          <li><strong>Likes.</strong> How many times each project was liked. Pressing a heart keeps a receipt in your browser so you can take the like back. Besides that, only Afterstep keeps something in your browser: your progress (puzzles solved, hints seen, lessons done), so it remembers your results and streak.</li>
-          <li><strong>Page views.</strong> One each time <a href="/">the lab's front page</a>, <a href="https://afterstep.brightloopapps.com">Afterstep</a> or <a href="https://inkchime.brightloopapps.com">Inkchime</a> opens. They're the only pages counted so far.</li>
+          <li><strong>Likes.</strong> How many times each project was liked. Pressing a heart keeps a receipt in your browser so you can take the like back.</li>
+          <li><strong>Kept in your browser.</strong> Besides like receipts, Afterstep keeps your progress (puzzles solved, hints seen, lessons done), so it remembers your results and streak. Sayfold keeps its speech model in your browser's cache storage, so later visits start straight away, and your GitHub repo and token only if you tick Remember on this device.</li>
+          <li><strong>Page views.</strong> One each time <a href="/">the lab's front page</a>, <a href="https://afterstep.brightloopapps.com">Afterstep</a>, <a href="https://inkchime.brightloopapps.com">Inkchime</a> or <a href="https://sayfold.brightloopapps.com">Sayfold</a> opens. They're the only pages counted so far.</li>
           <li><strong>Projects opened.</strong> Which project you open from the front page, once per project each time the page opens.</li>
           <li><strong>Puzzles started.</strong> In Afterstep, which puzzle you make a first move in: today's, a past one or a lesson. Once per puzzle each time the page opens.</li>
           <li><strong>Puzzles finished.</strong> In Afterstep, which puzzle you solve, about how many moves it took (a range, like 11–20) and whether you used a hint. Once per puzzle each time the page opens.</li>
           <li><strong>Songs started.</strong> In Inkchime, that you drew your first line or placed your first note, and whether the page began from a shared song link. Once each time the page opens.</li>
           <li><strong>Songs shared.</strong> In Inkchime, that you pressed Share and got a link, and whether the page began from a shared song link. Once each time the page opens.</li>
+          <li><strong>Recordings started.</strong> In Sayfold, that you started a recording. Once per recording.</li>
+          <li><strong>Recordings finished.</strong> In Sayfold, that a recording's text is ready to review, about how long the recording was (a range, like 30–59 seconds) and what turned it into text: Sayfold's server when it did all of it, otherwise the speech model in your browser, on the graphics card (WebGPU) or the CPU. Once per recording.</li>
+          <li><strong>Ideas sent.</strong> In Sayfold, that an idea went to GitHub as an issue, and nothing else: never the repo, your token, the labels or any of the words.</li>
         </ul>
         <p>Each one also carries what your browser tells any site: the page's address (without anything after a ? or #), the site you came from, and your browser, system, language, time zone and screen size.</p>
       </section>
@@ -50,13 +54,24 @@
         <ul>
           <li>No cookies, nothing saved in your browser for counting, and no accounts.</li>
           <li>Counts are kept by PostHog in its EU cloud, which drops your IP address.</li>
-          <li>If your browser asks sites not to track you (Do Not Track or Global Privacy Control), nothing is counted except the likes you press.</li>
+          <li>If your browser asks sites not to track you (Do Not Track or Global Privacy Control), nothing is counted except the likes you press and, while you use Sayfold's live text, the seconds used against its daily limit (below).</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="processed">
+        <h2 id="processed">Sayfold's live text: turned into text, not kept</h2>
+        <ul>
+          <li><strong>What's sent.</strong> While live text is on, Sayfold streams your microphone, as you record, to its own server, a Cloudflare Worker. The Worker has Cloudflare Workers AI turn the audio into text with Deepgram Flux. Each time you finish a sentence or pause, it sends the text so far and what you just said to Meta's Llama 3.3 70B, also on Workers AI, which makes your spoken edits ("no, Tuesday", "scratch that") and lists.</li>
+          <li><strong>What's kept.</strong> Nothing you say. The audio and the text are held in memory only while you record, and dropped when the recording ends. Sayfold doesn't store or log them, every request opts out of Deepgram's model-improvement programme, and Cloudflare doesn't use what Workers AI is given to train models.</li>
+          <li><strong>Limits.</strong> Live text takes one recording at a time and up to 3 minutes a day from each visitor, and turns off for everyone until midnight UTC when the day's free Workers AI allowance runs low. To keep to those limits, Sayfold's server knows you only by a hash of your IP address and the date, made with a random key that's new each day. The key, the hash and the day's seconds are deleted at midnight UTC.</li>
+          <li><strong>When it's off.</strong> When live text is off or can't be used, the speech model in your browser turns the recording, or the rest of it, into text, and that part stays on your device.</li>
+          <li><strong>GitHub.</strong> Your idea goes to GitHub only when you press Send, straight from your browser to your own repo, with your own token.</li>
         </ul>
       </section>
 
       <section aria-labelledby="never">
         <h2 id="never">Never sent</h2>
-        <p>Anything you type, draw, record or upload, the moves you make in a puzzle, your drawing in Inkchime or its song link, any free text, or anything that identifies you. The one place your words are kept is the suggestion box: the night shift reads what you send, and it's never shown publicly.</p>
+        <p>Anything you type, draw, record or upload, the moves you make in a puzzle, your drawing in Inkchime or its song link, what you say to Sayfold or its text, any free text, or anything that identifies you. There are two exceptions. What you say to Sayfold while its live text is on goes to its server to be turned into text, and isn't kept (above). And the one place your words are kept is the suggestion box: the night shift reads what you send, and it's never shown publicly.</p>
       </section>
     </main>
 

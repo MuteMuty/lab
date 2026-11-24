@@ -18,5 +18,16 @@
     "preview": "/previews/inkchime.jpg",
     "tech": ["TypeScript", "Web Audio", "Canvas"],
     "launched": "2026-11-13"
+  },
+  {
+    "name": "sayfold",
+    "title": "Sayfold",
+    "tagline": "Say an idea, get it as text, send it to your repo.",
+    "action": "Try",
+    "url": "https://sayfold.brightloopapps.com",
+    "repo": "MuteMuty/sayfold",
+    "preview": "/previews/sayfold.jpg",
+    "tech": ["TypeScript", "Workers AI", "WebGPU"],
+    "launched": "2026-11-24"
   }
 ]

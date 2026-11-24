@@ -168,7 +168,7 @@ A scout can run in one lane while a builder works in the other. To run one:
 **Launch** happens only when a full playtest passes and the result is something Erik would be proud to link:
 1. `gh repo edit MuteMuty/<name> --visibility public --accept-visibility-change-consequences`.
 2. Add the route `{ "pattern": "<name>.brightloopapps.com", "custom_domain": true }`. `deploy.ts` refuses any other route. If the Worker's name differs from the subdomain, set `"subdomain"` in `projects.json`.
-3. Deploy, set `"public": true`, and add it to `lab/hub/projects.json` with a preview image and to the Projects table in `lab/README.md`.
+3. Deploy, set `"public": true`, and add it to `lab/hub/projects.json` with a preview image and to the Projects table in `lab/README.md`. A project that isn't a game gets its own button verb in `projects.json` (`"action": "Try"`; the default is Play), and the README's link uses the same verb in lowercase.
 4. Redeploy the hub.
 
 ## 5. Build each task
