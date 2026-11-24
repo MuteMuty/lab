@@ -294,8 +294,15 @@ try {
       scripts: document.scripts.length,
     }));
     if (p.h1 !== "Privacy") fail(`privacy ${name}: heading is "${p.h1}"`);
-    for (const must of ["Likes", "Page views", "Projects opened", "front page", "Afterstep", "Puzzles started", "Puzzles finished", "11–20", "used a hint", "moves you make", "puzzles solved, hints seen, lessons done", "Inkchime", "Songs started", "Songs shared", "shared song link", "your drawing in Inkchime or its song link", "No cookies", "EU", "IP address", "Do Not Track", "Global Privacy Control", "Anything you type, draw, record or upload"]) {
+    for (const must of ["Likes", "Page views", "Projects opened", "front page", "Afterstep", "Puzzles started", "Puzzles finished", "11–20", "used a hint", "moves you make", "puzzles solved, hints seen, lessons done", "Inkchime", "Songs started", "Songs shared", "shared song link", "your drawing in Inkchime or its song link", "No cookies", "EU", "IP address", "Do Not Track", "Global Privacy Control", "Anything you type, draw, record or upload",
+      // Sayfold (lab#109): its events as its allow-list has them, and its live text named with its processor.
+      "Sayfold", "Recordings started", "Recordings finished", "30–59 seconds", "WebGPU", "Ideas sent", "never the repo, your token, the labels or any of the words",
+      "Cloudflare Workers AI", "Deepgram Flux", "Llama 3.3 70B", "doesn't store or log", "to train models", "hash of your IP address", "midnight UTC", "only when you press Send", "cache storage", "Remember on this device", "There are two exceptions. What you say to Sayfold"]) {
       if (!p.text.includes(must)) fail(`privacy ${name}: doesn't mention "${must}"`);
+    }
+    // Lines that stopped being true when Sayfold launched.
+    for (const stale of ["only Afterstep keeps something", "any free text, or anything that identifies you. The one place"]) {
+      if (p.text.includes(stale)) fail(`privacy ${name}: still says "${stale}"`);
     }
     if (!p.foot?.startsWith("Made by Erik Pahor at BrightLoop Lab") || p.erik !== "Erik Pahor" || !p.privacy) fail(`privacy ${name}: footer is "${p.foot}"`);
     if (!p.home) fail(`privacy ${name}: no way back to the hub`);
