@@ -23,6 +23,7 @@
     "name": "sayfold",
     "title": "Sayfold",
     "tagline": "Say an idea, get it as text, send it to your repo.",
+    "action": "Try",
     "url": "https://sayfold.brightloopapps.com",
     "repo": "MuteMuty/sayfold",
     "preview": "/previews/sayfold.jpg",

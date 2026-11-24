@@ -5,8 +5,9 @@ import "./nav.ts";
 import * as store from "./receipts.ts";
 import { loadAnalytics, track } from "./analytics/load.ts";
 import { PROJECT, EVENTS } from "./analytics-events.ts";
+import { cta } from "./projects.ts";
 
-type Project = { name: string; title: string; url: string; repo: string; preview: string; tagline: string; tech?: string[]; launched?: string };
+type Project = { name: string; title: string; url: string; repo: string; preview: string; tagline: string; action?: string; tech?: string[]; launched?: string };
 type Change = { repo: string; title: string; url: string; mergedAt: string };
 type RoadmapItem = { number: number; title: string; url: string; fromVisitor: boolean };
 type Likes = Record<string, { total: number; week: number }>;
@@ -45,9 +46,9 @@ async function render() {
         el("p", {}, p.tagline),
         el("span", { className: "tech" }, (p.tech ?? []).join(", ")),
         el("div", { className: "actions" },
-          el("a", { className: "btn primary", href: p.url }, `Play ${p.title}`),
+          el("a", { className: "btn primary", href: p.url }, cta(p)),
           el("a", { className: "btn", href: `https://github.com/${p.repo}` }, "Source"))))) }));
-  // Both links to a project (its preview and its Play button) count as opening it; see trackOpens().
+  // Both links to a project (its preview and its Play or Try button, see projects.ts) count as opening it; see trackOpens().
   for (const { p, li } of cards) for (const a of li.querySelectorAll("a")) if (a.href === new URL(p.url).href) a.dataset.open = p.name;
   $("projects").replaceChildren(...cards.map((c) => c.li));
   likesReady.then((likes) => likes && showLikes(cards, likes));

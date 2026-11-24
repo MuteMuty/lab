@@ -22,7 +22,7 @@ The lab builds itself. On the nights it runs (02:00 to 06:00, on my Mac), the [n
 |---|---|---|
 | [Afterstep](https://github.com/MuteMuty/afterstep) | A daily puzzle where your past self holds the doors. Rust + WebAssembly. | [play](https://afterstep.brightloopapps.com) |
 | [Inkchime](https://github.com/MuteMuty/inkchime) | Draw lines, hear music. TypeScript, Web Audio, Canvas. | [play](https://inkchime.brightloopapps.com) |
-| [Sayfold](https://github.com/MuteMuty/sayfold) | Say an idea, get it as text, send it to your repo. TypeScript, Workers AI, WebGPU. | [play](https://sayfold.brightloopapps.com) |
+| [Sayfold](https://github.com/MuteMuty/sayfold) | Say an idea, get it as text, send it to your repo. TypeScript, Workers AI, WebGPU. | [try](https://sayfold.brightloopapps.com) |
 
 ## The queue
 

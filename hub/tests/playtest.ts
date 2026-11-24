@@ -100,14 +100,20 @@ try {
     const cards = await page.evaluate(async () => {
       const want = (await (await fetch("/data/projects.json")).json()).map((p) => p.title);
       await Promise.all([...document.querySelectorAll<HTMLImageElement>(".card img")].map((i) => i.decode().catch(() => {})));
-      const have = [...document.querySelectorAll(".card")].map((c) => ({ title: c.querySelector("h3").textContent, img: c.querySelector("img").naturalWidth }));
+      const have = [...document.querySelectorAll(".card")].map((c) => ({ title: c.querySelector("h3").textContent, img: c.querySelector("img").naturalWidth, button: c.querySelector(".btn.primary")?.textContent }));
       return { want, have };
     });
+    // Each card's main button: the games say Play, Sayfold (a tool) says Try, and a project that's new here says Play.
+    const buttons: Record<string, string> = { Afterstep: "Play Afterstep", Inkchime: "Play Inkchime", Sayfold: "Try Sayfold" };
     for (const t of cards.want) {
       const c = cards.have.find((h) => h.title === t);
       if (!c) fail(`${name}: ${t} card missing`);
       else if (!c.img) fail(`${name}: ${t} preview didn't load`);
+      if (c && buttons[t] && c.button !== buttons[t]) fail(`${name}: ${t}'s button says "${c.button}", not "${buttons[t]}"`);
     }
+    for (const t of Object.keys(buttons)) if (!cards.want.includes(t)) fail(`${name}: no ${t} in the project data`);
+    const heading = await page.evaluate(() => [document.querySelector("#play-title")?.textContent, document.querySelector('.nav__links a[href="#play"]')?.textContent]);
+    if (heading.join() !== "Projects,Projects") fail(`${name}: the projects heading and nav link read "${heading.join('" and "')}"`);
     if (local) await page.waitForSelector(".card .like", { timeout: 5000 }).catch(() => fail(`${name}: no like buttons on localhost`));
     const likes = await checkLikes(page);
     for (const p of likes.problems) fail(`${name}: ${p}`);
@@ -292,18 +298,23 @@ try {
       overflowX: document.documentElement.scrollWidth > innerWidth + 1,
       clipped: [...document.querySelectorAll(".nav .wordmark, .nav .nav__cta")].filter((e) => e.getBoundingClientRect().right > innerWidth).map((e) => e.textContent.trim()),
       scripts: document.scripts.length,
+      likes: [...document.querySelectorAll("main li")].find((li) => li.querySelector("strong")?.textContent === "Likes.")?.textContent.replace(/\s+/g, " ") ?? "",
     }));
     if (p.h1 !== "Privacy") fail(`privacy ${name}: heading is "${p.h1}"`);
     for (const must of ["Likes", "Page views", "Projects opened", "front page", "Afterstep", "Puzzles started", "Puzzles finished", "11–20", "used a hint", "moves you make", "puzzles solved, hints seen, lessons done", "Inkchime", "Songs started", "Songs shared", "shared song link", "your drawing in Inkchime or its song link", "No cookies", "EU", "IP address", "Do Not Track", "Global Privacy Control", "Anything you type, draw, record or upload",
       // Sayfold (lab#109): its events as its allow-list has them, and its live text named with its processor.
       "Sayfold", "Recordings started", "Recordings finished", "30–59 seconds", "WebGPU", "Ideas sent", "never the repo, your token, the labels or any of the words",
-      "Cloudflare Workers AI", "Deepgram Flux", "Llama 3.3 70B", "doesn't store or log", "to train models", "hash of your IP address", "midnight UTC", "only when you press Send", "cache storage", "Remember on this device", "There are two exceptions. What you say to Sayfold"]) {
+      "Cloudflare Workers AI", "Deepgram Flux", "Llama 3.3 70B", "doesn't store or log", "to train models", "hash of your IP address", "midnight UTC", "only when you press Send", "cache storage", "Remember on this device", "There are two exceptions. What you say to Sayfold",
+      // Fix round 1: the page-views list, Do Not Track with Sayfold's seconds counter, and browser storage as its own item.
+      "the lab's front page, Afterstep, Inkchime or Sayfold opens", "nothing is counted except the likes you press and, while you use Sayfold's live text, the seconds used against its daily limit (below).",
+      "Kept in your browser. Besides like receipts, Afterstep keeps your progress"]) {
       if (!p.text.includes(must)) fail(`privacy ${name}: doesn't mention "${must}"`);
     }
     // Lines that stopped being true when Sayfold launched.
-    for (const stale of ["only Afterstep keeps something", "any free text, or anything that identifies you. The one place"]) {
+    for (const stale of ["only Afterstep keeps something", "any free text, or anything that identifies you. The one place", "Afterstep or Inkchime", "except the likes you press.", "Besides that, Afterstep"]) {
       if (p.text.includes(stale)) fail(`privacy ${name}: still says "${stale}"`);
     }
+    if (!p.likes.startsWith("Likes. How many times") || /Afterstep|Sayfold/.test(p.likes)) fail(`privacy ${name}: the Likes item is "${p.likes}"`);
     if (!p.foot?.startsWith("Made by Erik Pahor at BrightLoop Lab") || p.erik !== "Erik Pahor" || !p.privacy) fail(`privacy ${name}: footer is "${p.foot}"`);
     if (!p.home) fail(`privacy ${name}: no way back to the hub`);
     if (!p.font.includes("Bricolage")) fail(`privacy ${name}: heading font is ${p.font}`);
